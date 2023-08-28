@@ -1,0 +1,73 @@
+---
+title: "Figure 1"
+author: "Joey Mays"
+date: '2023-08-05'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+# Setup
+
+```{r message=FALSE}
+library(tidyverse)
+library(here)
+library(ggplotify)
+library(cowplot)
+```
+
+```{r}
+here::i_am("analysis-notebooks/Figure-01.Rmd")
+```
+
+```{r}
+dir.create(here("figures"), showWarnings = F, recursive = T)
+fig.scalar = 1.375 #figure size scalar
+```
+
+```{r}
+probe.map.1 <- readRDS(file = here("figures", "figure-a", "probe.map.1.RDS"))
+probe.map.2 <- readRDS(file = here("figures", "figure-a", "probe.map.2.RDS"))
+```
+
+```{r}
+plot.placeholder <- ggplot() + geom_blank() + theme(panel.background = element_blank())
+```
+
+```{r}
+p1 <- plot_grid(plotlist = list(probe.map.1, probe.map.2), ncol = 2, rel_widths = c(4.5, 3))
+plot_grid(plotlist = list(p1, plot.placeholder), ncol = 1, rel_heights = c(1,1.5), labels = "Figure 1", label_size = 12)
+```
+
+```{r}
+ggsave(filename = here("figures", "Figure-01.pdf"), 
+       device = "pdf", width = 8.25, height = 10.75)
+```
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```
+
+

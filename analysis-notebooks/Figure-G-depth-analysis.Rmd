@@ -1,0 +1,234 @@
+---
+title: "Figure G Analysis"
+author: "Joey Mays"
+date: '2023-01-22'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+# Setup
+
+```{r message=FALSE}
+library(CNweaveR)
+library(tidyverse)
+library(ggplot2)
+library(here)
+library(emmeans)
+library(cowplot)
+```
+
+```{r}
+set.seed(20221210)
+```
+
+```{r}
+here::i_am("analysis-notebooks/Figure-G-depth-analysis.Rmd")
+```
+
+```{r}
+dir.create(path = here("figures", "figure-g"), showWarnings = F)
+fig.scalar = 1.375 #figure size scalar
+
+theme_bw_custom <- theme_bw()
+theme_bw_custom$axis.text <- element_text(size = 7)
+theme_bw_custom$axis.title <- element_text(size = 8)
+theme_bw_custom$legend.text <- element_text(size = 7)
+theme_bw_custom$legend.title <- element_text(size = 8)
+theme_bw_custom$strip.text <- element_text(size = 7)
+```
+
+# Load Data
+
+```{r}
+exp1 <- readRDS(file = here("datasets", "exp01.tapestriexperiment.RDS"))
+#exp1.full <- readRDS(file = here("datasets", "exp01.full.tapestriexperiment.RDS"))
+```
+
+# Analysis
+
+```{r}
+#careful here, variable names are misleading 
+rpe.cells <- colData(exp1) %>% as.data.frame() %>% filter(cluster == "RPE1") %>% pull(cell.barcode)
+#exp1.rpe <- exp1[,rpe.cells]
+exp1.test <- exp1
+```
+
+We removed some probes that would hit 0 median normalized reads when downsampled, resulting in NaN values so they were removed prior to running the simulation. 
+
+```{r}
+excluded.probes <- c("AMPL161354", "AMPL158167", "AMPL160050", "AMPL159297", "AMPL147390", "AMPL158363", "AMPL148190", "AMPL158573", "AMPL158760", "AMPL160003")
+```
+
+```{r}
+exp1.test <- exp1.test[setdiff(rownames(exp1.test), excluded.probes),]
+```
+
+# Analysis
+
+```{r}
+downsample.results <- readRDS(here("datasets", "exp1.rpe1.readDepthSim.results.RDS")) %>% 
+    filter(cn.sim.class != "sim_cn6") %>% 
+    mutate(true.pos.p = true.pos.p * 100)
+```
+
+```{r}
+ggplot(downsample.results, aes(x = feature.id, y = true.pos.p, color = ds.level)) +
+    ggdist::stat_pointinterval(position = position_dodge(width = 0.9), point_size = 0.2, point_color = "black") +
+    theme_bw() +
+    theme(legend.position = "top") +
+    labs(x = "Chromosome", y = "Mean Accuracy (%)", color = "Depth") +
+    facet_wrap(cn.sim.class ~ .)
+```
+
+```{r}
+n.probes <- rowData(exp1.test) %>% as_tibble() %>% count(chr)
+colnames(n.probes) <- c("feature.id", "n.probes")
+```
+
+```{r}
+downsample.results.means <- downsample.results %>% group_by(feature.id, ds.level, cn.sim.class) %>% summarize(mean.pct.concordance = mean(true.pos.p), .groups = "drop_last") %>% left_join(n.probes, by = "feature.id") %>% ungroup()
+```
+
+```{r}
+plot.chr.acc <- downsample.results.means %>% 
+ggplot(aes(x = feature.id, y = mean.pct.concordance, color = ds.level)) +
+    ggdist::stat_halfeye(position = position_dodge(width = 0.9), 
+                         size = .05, alpha = 0.5) +
+        theme_bw() + 
+    scale_color_viridis_d(labels = c("85 (100%)", "68 (80%)", "51 (60%)", "34 (40%)", "17 (20%)")) +
+    theme(legend.position = "top", strip.background = element_blank()) +
+    labs(x = "Chromosome", y = "Mean Sensitivity (%)", color = "Depth") +
+    scale_y_continuous() +
+    facet_wrap(cn.sim.class ~ ., ncol = 1)
+plot.chr.acc
+```
+
+```{r}
+plot.regression <- downsample.results.means %>% 
+    ggplot(aes(x = n.probes, y = mean.pct.concordance, color = ds.level)) +
+    geom_line(stat="smooth", method = "lm", aes(group = ds.level), linewidth = 0.3) +
+    geom_point(size = 0.5, alpha = 0.5, position = position_jitter(width = 0.05)) +
+    theme_bw_custom +
+    theme(legend.position = "top", panel.grid.minor.x = element_blank(), strip.background = element_blank()) +
+    theme(legend.box.margin = margin(0, 10, 0, 10), legend.margin = margin(0), plot.margin = unit(c(0, 5.5, 5.5, 5.5), "pt")) +
+    labs(y = "Mean Sensitivity (%)", x = "Number of Probes", color = "Average Sequencing Depth\n(reads per cell per probe") +
+    scale_color_manual(values = c("#785EF0", "#648FFF", "#DC267F", "#FE6100", "#FFB000"),
+                       labels = c("85 (100%)", "68 (80%)", "51 (60%)", "34 (40%)", "17 (20%)")) +
+    scale_x_continuous(trans = "log", breaks = seq(5,25,5)) + 
+    scale_y_continuous() +
+    facet_wrap(cn.sim.class ~ .)
+plot.regression
+```
+
+```{r}
+plot.regression.row <- downsample.results.means %>% 
+    ggplot(aes(x = n.probes, y = mean.pct.concordance, color = ds.level, fill = ds.level)) +
+    geom_line(stat="smooth", method = "lm", aes(group = ds.level), linewidth = 0.5) +
+    geom_point(pch = 20, size = 0.5, alpha = 0.5, position = position_jitter(width = 0.05)) +
+    theme_bw_custom +
+    theme(legend.position = "top", panel.grid.minor.x = element_blank(), strip.background = element_blank(), 
+          legend.margin = margin(0,0,0,0,"pt")) +
+    labs(y = "Mean Theoretical Sensitivity (%)", x = "Number of Probes", color = "Depth") +
+    scale_color_manual(values = c("#785EF0", "#648FFF", "#DC267F", "#FE6100", "#FFB000"),
+                       labels = c("85 (100%)", "68 (80%)", "51 (60%)", "34 (40%)", "17 (20%)")) +
+    scale_x_continuous(trans = "log", breaks = seq(5,25,5)) + 
+    scale_y_continuous() + 
+    guides(fill = "none") +
+    facet_wrap(cn.sim.class ~ ., scales = "fixed", nrow = 1)
+plot.regression.row
+```
+
+```{r}
+saveRDS(plot.regression.row, here("figures", "figure-g", "exp01.downsample.depthByProbe.RDS"))
+```
+
+
+## Linear Modeling
+
+Transformation
+Linear-Log model
+
+```{r}
+downsample.results.means$ds.numeric <- as.numeric(as.character(downsample.results.means$ds.level))
+downsample.results.means$ds.numeric <- mean(colMeans(assay(exp1[,rpe.cells], "counts"))) * downsample.results.means$ds.numeric
+```
+
+```{r}
+downsample.results.means %>% 
+    ggplot(aes(x = ds.numeric, y = mean.pct.concordance, fill = cn.sim.class)) +
+    geom_point(size = 1) +
+    geom_smooth(method = "lm")
+```
+
+```{r}
+downsample.results.means %>% 
+    ggplot(aes(x = log(n.probes), y = mean.pct.concordance, color = ds.level)) +
+    geom_point(size = 1) +
+    geom_smooth(aes(group = cn.sim.class), alpha = 0.0, data = downsample.results.means, method = "loess") +
+    theme_bw() +
+    theme(legend.position = "top") +
+    labs(y = "Mean Accuracy", x = "Number of Probes", color = "Depth") +
+    scale_color_manual(values = viridisLite::viridis(n = 6)[1:5], 
+                       labels = c("85 (100%)", "68 (80%)", "51 (60%)", "34 (40%)", "17 (20%)"))
+
+```
+
+```{r}
+lm.cat <- downsample.results.means %>% group_split(cn.sim.class) %>% map(~lm(data = .x, mean.pct.concordance ~ log(n.probes) + ds.level))
+```
+
+```{r}
+map(lm.cat, ~summary(.x))
+map(lm.cat, "coefficients") %>% unlist() %>% matrix(., ncol = 6, byrow = T) %>% apply(., 2, mean) %>% round(., 1)
+```
+
+Interaction term is not significant.
+
+```{r}
+downsample.results.means %>% group_split(cn.sim.class) %>% map(., function(x){
+    rstatix::anova_test(data = x, mean.pct.concordance ~ log(n.probes) * ds.level)}) %>% print() %>% map(., \(x) round(x[3,"p"],1))
+```
+
+ANCOVA, covariate to control for (n.probes) goes first. 
+After adjustment for number of probes, downsampling groups have a significant effect on accuracy. 
+
+```{r}
+downsample.results.means %>% group_split(cn.sim.class) %>% map(., function(x){
+    rstatix::anova_test(data = x, mean.pct.concordance ~ log(n.probes) + ds.level)})
+```
+
+Posthoc test is used to find which of the downsampling groups is significant. 
+
+```{r}
+downsample.results.means <- downsample.results.means %>% mutate(log.n.probes = log(n.probes))
+downsample.results.means %>% group_split(cn.sim.class) %>% map(function(x){
+    rstatix::emmeans_test(data = x, mean.pct.concordance ~ ds.level, covariate = log.n.probes, p.adjust.method = "bonferroni")})
+```
+
+# session_info
+
+```{r}
+
+sessioninfo::session_info()
+```

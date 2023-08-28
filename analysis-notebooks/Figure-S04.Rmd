@@ -1,0 +1,91 @@
+---
+title: "Figure S4"
+author: "Joey Mays"
+date: '2023-08-05'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+# Setup
+
+```{r message=FALSE}
+library(tidyverse)
+library(here)
+library(ggrastr)
+library(cowplot)
+```
+
+```{r}
+here::i_am("analysis-notebooks/Figure-S04.Rmd")
+```
+
+```{r}
+dir.create(here("figures"), showWarnings = F, recursive = T)
+fig.scalar = 1.375 #figure size scalar
+```
+
+```{r}
+ychr.plot <- readRDS(here("figures", "figure-i", "chrY.probes.RDS"))
+exp4.umap <- readRDS(here("figures", "figure-i", "exp04.af.umap.RDS"))
+exp4.umap <- rasterize(exp4.umap, layers = "point", dpi = 1200)
+
+sensitivity.compare.plot <- readRDS(file = here("figures", "figure-i", "exp04.rpe1.sensitivity.compare.RDS"))
+sensitivity.compare.plot.arms <- readRDS(file = here("figures", "figure-i", "exp04.rpe1.sensitivity.compare.arms.RDS"))
+
+tpr.wc.bars <- readRDS(here("figures", "figure-i", "exp04.rpe1.tpr.wc.RDS"))
+tpr.arm.bars <- readRDS(here("figures", "figure-i", "exp04.rpe1.tpr.arm.RDS")) + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.margin = unit(c(5.5, 5.5, 5.5, 0), "pt"))
+
+barcode.plot.1 <- readRDS(file = here("figures", "figure-j", "exp04.bc.counts.rpe1.RDS"))
+barcode.plot.2 <- readRDS(file = here("figures", "figure-j", "exp04.bc.counts.hcec.RDS"))
+barcode.plot.3 <- readRDS(file = here("figures", "figure-j", "exp04.bc.counts.hpne.RDS"))
+```
+
+```{r}
+plot.placeholder <- ggplot() + geom_blank() + theme(panel.background = element_blank())
+```
+
+```{r}
+p1 <- cowplot::plot_grid(plotlist = list(ychr.plot, exp4.umap), ncol = 2, labels = c("A.", "B."), rel_widths = c(1, 0.7), label_size = 12, scale = 0.95, align = "h", axis = "b")
+
+p1.5 <- cowplot::plot_grid(plotlist = list(sensitivity.compare.plot, sensitivity.compare.plot.arms, plot.placeholder), ncol = 3, labels = c("C."), label_size = 12, scale = 0.95)
+
+p2 <- cowplot::plot_grid(plotlist = list(tpr.wc.bars, tpr.arm.bars), ncol = 2, labels = c("D.", ""), rel_widths = c(0.8, 1), axis = "b", align = "h", label_size = 12, scale = 0.95)
+
+p3 <- cowplot::plot_grid(plotlist = list(barcode.plot.1, barcode.plot.2, barcode.plot.3), ncol = 3, scale = 0.95)
+
+p4 <- cowplot::plot_grid(plotlist = list(p1, p1.5, p2, p3), nrow = 4, rel_heights = c(1,0.8,1.5,1), label_size = 12, labels = c("", "", "", "E."))
+
+p5 <- cowplot::plot_grid(plotlist = list(plot.placeholder, p4), labels = "Supplimental Figure 4", ncol = 1, rel_heights = c(1,40), hjust = -0.05, label_size = 12)
+```
+
+```{r}
+ggsave(p5, filename = here("figures", "Figure-S04.pdf"), 
+       device = "pdf", width = 8.25, height = 10.75)
+```
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```

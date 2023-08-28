@@ -1,0 +1,221 @@
+---
+title: "Exp 001-CO261 CNweaveR analysis"
+author: "Joey Mays"
+date: '2023-01-14'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+# Setup
+
+```{r message=FALSE}
+library(CNweaveR)
+library(tidyverse)
+library(ggplot2)
+library(ggdist)
+library(here)
+```
+
+```{r}
+set.seed(20221210)
+```
+
+```{r}
+here::i_am("analysis-notebooks/exp01-cnweaver-analysis.Rmd")
+```
+
+# Load Data
+
+```{r}
+tapestri.filename <- here("datasets", "tapestri-experiment01-panelv1.h5")
+```
+
+# Construct Object
+
+```{r}
+exp1 <- createTapestriExperiment(tapestri.filename, panel.id = "CO261")
+```
+
+# AF Clustering
+
+## Embedding
+
+```{r}
+exp1 <- runPCA(exp1, "alleleFrequency", sd.min.threshold = 20)
+PCAKneePlot(exp1)
+```
+
+
+```{r}
+reducedDimPlot(exp1, dim.reduction = "pca")
+exp1 <- runUMAP(exp1, alt.exp = "alleleFrequency", use.pca.dims = T, pca.dims = 1:4)
+```
+
+```{r}
+reducedDimPlot(exp1, alt.exp = "alleleFrequency", dim.reduction = "umap")
+```
+
+## Clustering
+
+```{r}
+exp1 <- runClustering(exp1, alt.exp = "alleleFrequency", eps = 0.3)
+```
+
+
+```{r}
+reducedDimPlot(exp1, dim.reduction = "umap", group.label = "cluster")
+```
+
+Number of cells in each cluster
+
+```{r}
+fct_count(colData(exp1)$cluster)
+```
+Filter
+
+```{r}
+exp1.subset <- exp1[,colData(exp1)$cluster %in% 1:5]
+```
+
+```{r}
+reducedDimPlot(exp1.subset, dim.reduction = "umap", group.label = "cluster")
+```
+
+
+## Probes
+
+```{r}
+summary(rowData(exp1.subset)$median.reads > 0)
+rowData(exp1.subset)[rowData(exp1.subset)$median.reads == 0,]
+```
+```{r}
+exp1.subset <- exp1.subset[rowData(exp1.subset)$median.reads > 0,] #8 filtered for exp 1
+```
+
+# Normalization
+
+```{r}
+exp1.subset <- calcNormCounts(exp1.subset)
+```
+
+## Copy Number Calculation
+
+Rename cluster labels
+
+```{r}
+colData(exp1.subset)$cluster <- fct_recode(colData(exp1.subset)$cluster, cellline1 = "1", cellline2 = "2", cellline3 = "3", cellline4 = "4", cellline5 = "5")
+colData(exp1.subset)$cluster <- fct_drop(colData(exp1.subset)$cluster)
+fct_count(colData(exp1.subset)$cluster)
+```
+
+Following probes have control cell median equal to 0. Filter out prior to proceeding.
+
+```{r}
+amps.to.exlcude <- c("AMPL158845", "AMPL147144", "AMPL147154", "AMPL135088", "AMPL159975",
+                     "AMPL147293", "AMPL113086", "AMPL147323", "AMPL159221", "AMPL159339", 
+                     "AMPL158390", "AMPL158655", "AMPL147043")
+exp1.subset <- exp1.subset[!rownames(exp1.subset) %in% amps.to.exlcude,]
+```
+
+Generate control.copy.number lookup table for RPE1 cells, set 10q to ploidy = 3
+
+```{r}
+control.copy.number <- generateControlCopyNumberTemplate(exp1.subset, sample.feature.label = "cellline2", copy.number = 2)
+control.copy.number["chr10q", "copy.number"] <- 3
+exp1.subset <- calcCopyNumber(exp1.subset, control.copy.number = control.copy.number, sample.feature = "cluster")
+```
+
+```{r}
+ploidy.tidy <- getTidyData(exp1.subset, assay = "copyNumber")
+```
+
+```{r}
+ploidy.tidy %>% group_by(feature.id, cluster) %>% summarize(median.ploidy = median(copyNumber), .groups = "drop") %>% 
+    ggplot(aes(x=feature.id, y = median.ploidy)) + geom_point(size = 1) + facet_wrap(cluster~., ncol = 1) + theme(axis.text.x = element_blank())
+```
+
+## Copy Number Smoothing
+
+```{r}
+exp1.subset <- calcSmoothCopyNumber(exp1.subset)
+rpe1.bc <- colData(exp1.subset) %>% as_tibble() %>% filter(cluster == "cellline2") %>% pull(cell.barcode)
+exp1.subset <- calcGMMCopyNumber(exp1.subset, cell.barcodes = rpe1.bc, control.copy.number = control.copy.number, model.components = 1:6)
+```
+
+```{r}
+smoothed.ploidy.tidy.chr <- getTidyData(exp1.subset, alt.exp = "smoothedCopyNumberByChr", assay = "smoothedCopyNumber")
+```
+
+```{r}
+ggplot(smoothed.ploidy.tidy.chr, aes(x = feature.id, y = smoothedCopyNumber)) + facet_wrap(cluster ~., ncol = 1) +
+    ggdist::stat_halfeye(point_size = 2, alpha = 0.8)
+```
+
+```{r}
+smoothed.ploidy.tidy.arm <- getTidyData(exp1.subset, alt.exp = "smoothedCopyNumberByArm", assay = "smoothedCopyNumber")
+```
+
+```{r}
+ggplot(smoothed.ploidy.tidy.arm, aes(x = feature.id, y = smoothedCopyNumber)) + facet_wrap(cluster ~., ncol = 1) +
+    ggdist::stat_halfeye(point_size = 2, alpha = 0.8) + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+    scale_y_continuous(breaks = c(0,2,4,6,8,10))
+```
+
+# Heatmaps
+
+```{r}
+assayHeatmap(exp1.subset, assay = "copyNumber", split.col.by = "chr", split.row.by = "cluster", color.preset = "copy.number.denoise")
+```
+
+```{r}
+colData(exp1.subset)$cluster <- fct_recode(colData(exp1.subset)$cluster, LS513 = "cellline1", RPE1 = "cellline2", SW48 = "cellline3", LoVo = "cellline4", CL11 = "cellline5")
+```
+
+```{r}
+assayHeatmap(exp1.subset, alt.exp = "smoothedCopyNumberByChr", assay = "smoothedCopyNumber", split.row.by = "cluster", color.preset = "copy.number.denoise", name = "smCN", column_names_rot = 0)
+```
+
+```{r}
+assayHeatmap(exp1.subset, alt.exp = "smoothedCopyNumberByArm", assay = "smoothedCopyNumber", split.row.by = "cluster", color.preset = "copy.number.denoise", name = "smCN")
+```
+
+```{r}
+assayHeatmap(exp1.subset, alt.exp = "smoothedCopyNumberByChr", assay = "gmmCopyNumber", split.row.by = "cluster", color.preset = "copy.number.denoise", name = "gmmCN", column_names_rot = 0, column_names_centered = T)
+```
+```{r}
+assayHeatmap(exp1.subset, alt.exp = "smoothedCopyNumberByArm", assay = "gmmCopyNumber", split.row.by = "cluster", color.preset = "copy.number.denoise", name = "gmmCN")
+```
+
+# Save Objects
+
+```{r}
+saveRDS(exp1, file = here("datasets", "exp01.full.tapestriexperiment.RDS"))
+saveRDS(exp1.subset, file = here("datasets", "exp01.tapestriexperiment.RDS"))
+```
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```

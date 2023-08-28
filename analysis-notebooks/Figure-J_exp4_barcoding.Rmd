@@ -1,0 +1,231 @@
+---
+title: "Figure J - Exp 4 Barcoding"
+author: "Joey Mays"
+date: '2023-04-20'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+# Setup
+
+```{r message=FALSE}
+library(CNweaveR)
+library(tidyverse)
+library(ggplot2)
+library(here)
+library(cowplot)
+```
+
+```{r}
+set.seed(20221210)
+```
+
+```{r}
+here::i_am("analysis-notebooks/Figure-J_exp4_barcoding.Rmd")
+```
+
+```{r}
+dir.create(here("figures", "figure-j"), showWarnings = F, recursive = T)
+fig.scalar = 1.375
+
+theme_bw_custom <- theme_bw()
+theme_bw_custom$axis.text <- element_text(size = 7)
+theme_bw_custom$axis.title <- element_text(size = 8)
+theme_bw_custom$legend.text <- element_text(size = 7)
+theme_bw_custom$legend.title <- element_text(size = 8)
+theme_bw_custom$strip.text <- element_text(size = 7)
+theme_bw_custom$title <- element_text(size = 8)
+```
+
+# Load Data
+
+```{r}
+exp4 <- readRDS(file = here("datasets", "exp04.tapestriexperiment.RDS"))
+#exp4.full <- readRDS(file = here("datasets", "exp04.full.tapestriexperiment.RDS"))
+```
+
+Move RPE1 to first position in factor for plotting order.
+
+```{r}
+colData(exp4)$cluster <- fct_relevel(colData(exp4)$cluster, "RPE1")
+```
+
+# Analysis
+
+```{r}
+# gRNA1 = gNC, gRNA2 = g7x3
+grna.lookup <- data.frame(ids = c("gRNA1", "gRNA2"),
+                             sequences = c("ACGGAGGCTAAGCGTCGCAA", "ACTCTTGCTGTGGCATTTTC"))
+```
+
+```{r}
+exp4 <- countBarcodedReads(exp4, bam.file = here("datasets", "exp04.cells.bam"), probe = "grna", barcode.lookup = grna.lookup, max.mismatch = 2, with.indels = F)
+```
+
+```{r}
+#Barcode = bc.d5
+barcode.lookup <- data.frame(ids = c("Barcode1", "Barcode2"), sequences = c("CGTAGCTAATCTAGCATGCTCACT", "GTTGTCCTTCACGCCTGCGAATTC"))
+```
+
+```{r}
+exp4 <- countBarcodedReads(exp4, bam.file = here("datasets", "exp04.cells.bam"), probe = "barcode", barcode.lookup = barcode.lookup, max.mismatch = 2, with.indels = F)
+```
+
+```{r}
+head(colData(exp4))
+```
+
+```{r}
+barcode.counts <- colData(exp4) %>% as_tibble() %>% mutate(Barcode = Barcode1 + Barcode2) %>% pivot_longer(cols = c("gRNA1", "gRNA2", "Barcode"), names_to = "feature.barcode", values_to = "barcode.counts")
+barcode.counts$feature.barcode <- as.factor(barcode.counts$feature.barcode)
+barcode.counts$feature.barcode <- fct_relevel(barcode.counts$feature.barcode, "Barcode", after = 2)
+```
+
+```{r}
+barcode.counts %>% group_by(cluster, feature.barcode) %>% summarize(mean.feature.counts = round(mean(barcode.counts)))
+```
+
+```{r}
+zero.counts <- barcode.counts %>% group_by(cluster, feature.barcode) %>% mutate(zero.counts = barcode.counts == 0) %>% dplyr::count(zero.counts) %>% mutate(pct.zero = round(100*n/sum(n),0)) %>% filter(zero.counts) %>% mutate(pct.zero.label = paste0("Zero: ", pct.zero, "%"))
+```
+
+```{r}
+exp04.barcode.hist <- 
+ggplot(barcode.counts, aes(x = barcode.counts, fill = cluster)) + 
+    geom_histogram(binwidth = 0.5, color = "black") +
+    theme_bw_custom + 
+    theme(strip.background = element_blank(), axis.text.x.bottom = element_text(angle = 45, hjust = 1), 
+          panel.grid.minor = element_blank(), legend.position = "none") +
+    facet_grid(feature.barcode ~ cluster) +
+    scale_x_continuous(trans = "log1p", breaks = c(0,10,50,100,200,400)) +
+    labs(y = "Frequency", x = "gRNA/Barcode Sequence Reads per Cell") +
+    scale_fill_manual(values = c("#785EF0", "#648FFF", "#DC267F")) +
+    ylim(0,700) +
+    geom_text(data = zero.counts, aes(label = pct.zero.label, x = 0, y = Inf), hjust = 0.2, vjust = 1, size = 7/.pt)
+exp04.barcode.hist
+```
+
+```{r}
+saveRDS(exp04.barcode.hist, file = here("figures", "figure-j", "exp04.barcode.hist.RDS"))
+```
+
+Dist of counts for gRNA probe in RPE1 and HCEC
+
+```{r}
+getTidyData(exp4) %>% filter(cluster == "RPE1") %>% group_by(feature.id) %>% summarise(mean(counts), median(counts))
+getTidyData(exp4, alt.exp = "grnaCounts") %>% filter(cluster == "RPE1") %>% summarise(mean(counts), median(counts))
+getTidyData(exp4, alt.exp = "grnaCounts") %>% filter(cluster == "HCEC") %>% summarise(mean(counts), median(counts))
+```
+
+```{r}
+getTidyData(exp4) %>% filter(cluster == "RPE1") %>% group_by(feature.id) %>% summarise(mean(counts), median(counts))
+getTidyData(exp4, alt.exp = "barcodeCounts") %>% filter(cluster == "HPNE") %>% summarise(mean(counts), median(counts))
+```
+
+# Sequencing matching and counts
+
+```{r}
+grna1.counts <- 
+    getTidyData(exp4, alt.exp = "grnaCounts") %>% filter(cluster == "RPE1") %>% select(cell.barcode, counts, gRNA1, total.reads.bc)
+```
+
+```{r}
+grna1.plot <- 
+    ggplot(grna1.counts, aes(x = counts, y = gRNA1)) +
+    geom_point(size = 0.5) +
+    geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+    theme_bw_custom +
+    theme(axis.line = element_line(), panel.border = element_blank(), plot.title = element_text(hjust = 0.5)) +
+    labs(y = "Reads Matching gRNA1\nSequence Per Cell", x = "Probe AMP350\nRead Counts per Cell", title = "RPE1") +
+    scale_y_continuous(limits = c(0,300), expand = c(0,0,0,0)) +
+    scale_x_continuous(limits = c(0,300), expand = c(0,0,0,5))
+grna1.plot
+```
+
+```{r}
+lm(data = grna1.counts, gRNA1 ~ counts)
+```
+
+```{r}
+saveRDS(grna1.plot, file = here("figures", "figure-j", "exp04.bc.counts.rpe1.RDS"))
+```
+
+```{r}
+grna2.counts <- 
+    getTidyData(exp4, alt.exp = "grnaCounts") %>% filter(cluster == "HCEC") %>% select(cell.barcode, counts, gRNA2, total.reads.bc)
+```
+
+```{r}
+grna2.plot <- 
+ggplot(grna2.counts, aes(x = counts, y = gRNA2)) +
+    geom_point(size = 0.5) +
+    geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+    theme_bw_custom +
+    theme(axis.line = element_line(), panel.border = element_blank(), plot.title = element_text(hjust = 0.5)) +
+    labs(y = "Reads Matching gRNA2\nSequence Per Cell", x = "Probe AMP350\nRead Counts per Cell", title = "hCEC") +
+    scale_y_continuous(limits = c(0,300), expand = c(0,0,0,0)) +
+    scale_x_continuous(limits = c(0,300), expand = c(0,0,0,5))
+grna2.plot
+```
+
+```{r}
+lm(data = grna2.counts, gRNA2 ~ counts)
+```
+
+```{r}
+saveRDS(grna2.plot, file = here("figures", "figure-j", "exp04.bc.counts.hcec.RDS"))
+```
+
+```{r}
+bc.counts <- 
+    getTidyData(exp4, alt.exp = "barcodeCounts") %>% filter(cluster == "HPNE") %>% select(cell.barcode, counts, Barcode1, Barcode2)
+bc.counts$Barcode <- bc.counts$Barcode1 + bc.counts$Barcode2
+```
+
+```{r}
+barcode.plot <- 
+ggplot(bc.counts, aes(x = counts, y = Barcode)) +
+    geom_point(size = 0.5) +
+    geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+    theme_bw_custom +
+    theme(axis.line = element_line(), panel.border = element_blank(), plot.title = element_text(hjust = 0.5)) +
+    labs(y = "Reads Matching Barcode\nSequence Per Cell", x = "Probe AMP351\nRead Counts Per Cell", title = "hPNE") +
+    scale_y_continuous(limits = c(0,500), expand = c(0,0,0,0)) +
+    scale_x_continuous(limits = c(0,500), expand = c(0,0,0,5))
+barcode.plot
+```
+
+```{r}
+lm(data = bc.counts, Barcode ~ counts)
+```
+
+```{r}
+saveRDS(barcode.plot, file = here("figures", "figure-j", "exp04.bc.counts.hpne.RDS"))
+```
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```

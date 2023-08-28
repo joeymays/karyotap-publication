@@ -1,0 +1,74 @@
+---
+title: "Figure S2"
+author: "Joey Mays"
+date: '2023-08-02'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+# Setup
+
+```{r message=FALSE}
+library(tidyverse)
+library(here)
+library(ggplotify)
+library(cowplot)
+```
+
+```{r}
+here::i_am("analysis-notebooks/Figure-S02.Rmd")
+```
+
+```{r}
+dir.create(here("figures"), showWarnings = F, recursive = T)
+fig.scalar = 1.375 #figure size scalar
+```
+
+```{r}
+chr.length.sensitivity <- readRDS(here("figures", "figure-c", "exp01.rpe1.accuracyVsLength.RDS"))
+tpr.wc.bars <- readRDS(here("figures", "figure-c", "exp01.wc.theoretical.tpr.bars.RDS"))
+tpr.arm.bars <- readRDS(file = here("figures", "figure-c", "exp01.arm.theoretical.tpr.bars.RDS"))
+```
+
+```{r}
+plot.placeholder <- ggplot() + geom_blank() + theme(panel.background = element_blank())
+```
+
+```{r}
+p1 <- plot_grid(plotlist = list(chr.length.sensitivity, plot.placeholder), ncol = 2, labels = c("A.", ""), label_size = 12, scale = 0.95)
+p2 <- plot_grid(plotlist = list(tpr.wc.bars, plot.placeholder), rel_widths = c(1, 1), ncol = 2, labels = c("B.", ""), label_size = 12, scale = 0.95)
+p3 <- plot_grid(plotlist = list(p1, p2, tpr.arm.bars, plot.placeholder), ncol = 1, rel_heights = c(0.8,1.1,1.1,1), labels = c("", "", "C."), label_size = 12, scale = c(1,1,0.95))
+p4 <- plot_grid(plotlist = list(plot.placeholder, p3), labels = "Supplemental Figure 2", label_size = 12, ncol = 1, rel_heights = c(1,40), hjust = -0.05)
+```
+
+```{r}
+ggsave(plot = p4, filename = here("figures", "Figure-S02.pdf"), 
+       device = "pdf", width = 8.25, height = 10.75)
+```
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```

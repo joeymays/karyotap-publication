@@ -1,0 +1,7 @@
+karyotap-publication.Rproj
+.Rproj.user
+*.RDS
+*.bai
+*.bam
+figures
+.Rhistory

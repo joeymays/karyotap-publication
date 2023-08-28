@@ -1,0 +1,208 @@
+---
+title: "Figure D Simluation"
+author: "Joey Mays"
+date: '2023-01-16'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+# Setup
+
+```{r message=FALSE}
+library(CNweaveR)
+library(tidyverse)
+library(ggplot2)
+library(here)
+library(furrr)
+```
+
+```{r}
+set.seed(20221210)
+plan(multicore, workers = parallel::detectCores())
+```
+
+```{r}
+here::i_am("analysis-notebooks/Figure-D-downsample-sim.Rmd")
+```
+
+```{r}
+source(here("scripts", "gmm-calc-TPR.R"))
+```
+
+```{r}
+dir.create(path = here("figures", "figure-d"), showWarnings = F)
+```
+
+# Load Data
+
+```{r}
+exp1 <- readRDS(file = here("datasets", "exp01.tapestriexperiment.RDS"))
+#exp1.full <- readRDS(file = here("datasets", "exp01.full.tapestriexperiment.RDS"))
+```
+
+# Analysis
+
+## Probe Downsampling
+
+### Chr 2
+
+Subset TapestriExperiment to only RPE1 cells and chr2. 
+
+```{r}
+rpe1.bcs <- colData(exp1) %>% as_tibble() %>% filter(cluster == "RPE1") %>% pull(cell.barcode)
+chr2.probes <- rowData(exp1) %>% as_tibble() %>% filter(chr == 2) %>% pull(probe.id)
+rpe1 <- exp1[chr2.probes, rpe1.bcs]
+```
+
+Repeatedly sample probes. Start at 22 with 50 reps, add one instance of 24. 
+
+```{r}
+n.reps <- 50 # n reps per probe level
+probe.levels <- seq(22, 4, -2) # sequence of probe levels
+downsample.sequence <- rep(probe.levels, each = n.reps)
+downsample.sequence <- c(24, downsample.sequence)
+```
+```{r}
+rpe1.probe.samples <- list()
+for(i in seq_len(length(downsample.sequence))){
+        rpe1.probe.samples[[i]] <- sample(chr2.probes, size = downsample.sequence[i])
+}
+```
+
+```{r}
+sampled.matrix.list <- list()
+rpe1.counts <- assay(rpe1, "counts")
+rpe1.copynumber <- assay(rpe1, "copyNumber")
+for(i in seq_len(length(rpe1.probe.samples))){
+  
+    current.mat <- rpe1.counts[rpe1.probe.samples[[i]], ]
+    
+    row.data <- data.frame(probe.id = rpe1.probe.samples[[i]], chr = 2, 
+                           start.pos = 0, end.pos = 100, row.names = rpe1.probe.samples[[i]])
+  
+  te <- CNweaveR:::.createTapestriExperiment.sim(counts = current.mat, probe.metadata = row.data)
+  assay(te, "counts") <- current.mat
+  assay(te, "copyNumber") <- rpe1.copynumber[rpe1.probe.samples[[i]], ]
+  
+   sampled.matrix.list[[i]] <- te
+}
+```
+
+Simulation Function
+
+```{r}
+sim.step <- function(tapestri.object.init, step, n.reps){
+  
+    tapestri.object <- suppressMessages(calcSmoothCopyNumber(tapestri.object.init)) #smooth copy number
+  control.cn <- generateControlCopyNumberTemplate(tapestri.object, copy.number = 2)
+    control.cn["chr10q", "copy.number"] <- 3 
+    tapestri.object <- suppressMessages(calcGMMCopyNumber(tapestri.object, cell.barcodes = colnames(tapestri.object), control.cn, model.components = 1:6))
+    
+    gmm.metrics <- calcTruePosRate(tapestri.object) %>% filter(cn.sim.class != "sim_cn6") %>% 
+      dplyr::select(feature.id, cn.sim.class, true.pos.p)
+    
+    gmm.metrics <- gmm.metrics %>% add_column(sample.size = nrow(tapestri.object))
+    
+        step.local <- step %% n.reps
+    gmm.metrics$replicate <- ifelse(step.local == 0, n.reps, step.local) 
+    
+    gmm.metrics$actual.sensitivity <- getTidyData(tapestri.object, "smoothedCopyNumberByChr", "gmmCopyNumber") %>% mutate(cn.concordance = gmmCopyNumber == 2) %>% 
+        count(cn.concordance) %>% mutate(pct.concordance = (n*100)/sum(n)) %>% filter(cn.concordance == TRUE) %>% pull(pct.concordance)
+  
+    return(gmm.metrics)
+}
+```
+
+Running GMM for components 1:6 so cn=5 has an upper boundary but only evaluating 1:5.
+
+```{r}
+sim.results.chr2 <- future_imap(sampled.matrix.list, ~sim.step(tapestri.object.init = .x, step = .y, n.reps = n.reps), .progress = T, .options = furrr_options(seed = 20221210))
+sim.results.chr2 <- list_rbind(sim.results.chr2)
+```
+
+```{r}
+saveRDS(sim.results.chr2, file = here("datasets", "chr2.downsampleProbesSim.results.RDS"))
+```
+
+### Chr 6
+
+Subset TapestriExperiment to only RPE1 cells and chr6.
+
+```{r}
+rpe1.bcs <- colData(exp1) %>% as_tibble() %>% filter(cluster == "RPE1") %>% pull(cell.barcode)
+chr6.probes <- rowData(exp1) %>% as_tibble() %>% filter(chr == 6) %>% pull(probe.id)
+rpe1 <- exp1[chr6.probes, rpe1.bcs]
+```
+
+Repeatedly sample probes. Start at 22 with 50 reps, add one instance of 24. 
+
+```{r}
+n.reps <- 50 # n reps per probe level
+probe.levels <- seq(16, 4, -2) # sequence of probe levels
+downsample.sequence <- rep(probe.levels, each = n.reps)
+downsample.sequence <- c(18, downsample.sequence)
+```
+
+```{r}
+rpe1.probe.samples <- list()
+for(i in seq_len(length(downsample.sequence))){
+        rpe1.probe.samples[[i]] <- sample(chr6.probes, size = downsample.sequence[i])
+}
+```
+
+```{r}
+sampled.matrix.list <- list()
+rpe1.counts <- assay(rpe1, "counts")
+rpe1.copynumber <- assay(rpe1, "copyNumber")
+for(i in seq_len(length(rpe1.probe.samples))){
+  
+    current.mat <- rpe1.counts[rpe1.probe.samples[[i]], ]
+    
+    row.data <- data.frame(probe.id = rpe1.probe.samples[[i]], chr = 6, 
+                           start.pos = 0, end.pos = 100, row.names = rpe1.probe.samples[[i]])
+  
+  te <- CNweaveR:::.createTapestriExperiment.sim(counts = current.mat, probe.metadata = row.data)
+  assay(te, "counts") <- current.mat
+  assay(te, "copyNumber") <- rpe1.copynumber[rpe1.probe.samples[[i]], ]
+  
+   sampled.matrix.list[[i]] <- te
+}
+```
+
+Run simulation
+
+```{r}
+sim.results.chr6 <- future_imap(sampled.matrix.list, ~sim.step(tapestri.object.init = .x, step = .y, n.reps = n.reps), .progress = T, .options = furrr_options(seed = 20221210))
+sim.results.chr6 <- list_rbind(sim.results.chr6)
+```
+
+```{r}
+saveRDS(sim.results.chr6, file = here("datasets", "chr6.downsampleProbesSim.results.RDS"))
+```
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```

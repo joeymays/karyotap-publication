@@ -1,0 +1,71 @@
+---
+title: "Figure 6"
+author: "Joey Mays"
+date: '2023-08-05'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+# Setup
+
+```{r message=FALSE}
+library(tidyverse)
+library(here)
+library(cowplot)
+```
+
+```{r}
+here::i_am("analysis-notebooks/Figure-06.Rmd")
+```
+
+```{r}
+dir.create(here("figures"), showWarnings = F, recursive = T)
+fig.scalar = 1.375 #figure size scalar
+```
+
+```{r}
+fig.full.wide <- readRDS(file = here("figures", "figure-k", "exp04.kc.wide.RDS")) 
+```
+
+```{r}
+plot.placeholder <- ggplot() + geom_blank() + theme(panel.background = element_blank())
+```
+
+```{r}
+p2 <- plot_grid(plotlist = list(fig.full.wide, plot.placeholder), ncol = 1, rel_heights = c(0.75,1), scale = 0.95)
+cowplot::plot_grid(plotlist = list(plot.placeholder, p2), labels = "Figure 6", label_size = 12, ncol = 1, rel_heights = c(1,40), hjust = -0.05)
+```
+
+```{r}
+ggsave(filename = here("figures", "Figure-06.pdf"), 
+       device = "pdf", width = 8.25, height = 10.75)
+```
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```
+
+

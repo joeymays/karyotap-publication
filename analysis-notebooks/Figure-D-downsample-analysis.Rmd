@@ -1,0 +1,289 @@
+---
+title: "Figure D Analysis"
+author: "Joey Mays"
+date: '2023-01-16'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+Plot for Figure 4A.
+
+# Setup
+
+```{r message=FALSE}
+library(CNweaveR)
+library(tidyverse)
+library(ggplot2)
+library(here)
+library(cowplot)
+```
+
+```{r}
+set.seed(20221210)
+```
+
+```{r}
+here::i_am("analysis-notebooks/Figure-D-downsample-analysis.Rmd")
+fig.scalar = 1.375 #figure size scalar
+
+theme_bw_custom <- theme_bw()
+theme_bw_custom$axis.text <- element_text(size = 7)
+theme_bw_custom$axis.title <- element_text(size = 8)
+theme_bw_custom$legend.text <- element_text(size = 7)
+theme_bw_custom$legend.title <- element_text(size = 8)
+theme_bw_custom$strip.text <- element_text(size = 7)
+```
+
+```{r}
+dir.create(path = here("figures", "figure-d"), showWarnings = F)
+```
+
+# Load Data
+
+```{r}
+exp1 <- readRDS(file = here("datasets", "exp01.tapestriexperiment.RDS"))
+```
+
+# Analysis
+
+## Probe Downsampling
+
+### Chr 2
+
+```{r}
+sim.results.full.chr2 <- readRDS(file = here("datasets", "chr2.downsampleProbesSim.results.RDS"))
+```
+
+```{r}
+sim.results.full.chr2$sample.size <- as.factor(sim.results.full.chr2$sample.size)
+sim.results.full.chr2$replicate <- as.factor(sim.results.full.chr2$replicate)
+sim.results.full.chr2$true.pos.p <- sim.results.full.chr2$true.pos.p * 100
+```
+
+```{r}
+chr2.actual.sensitivity <- sim.results.full.chr2 %>% 
+    select(feature.id, sample.size, replicate, actual.sensitivity) %>% 
+    distinct()
+
+chr2.actual.sensitivity.iqr <- chr2.actual.sensitivity %>% group_by(sample.size) %>% 
+    summarize(iqr = IQR(actual.sensitivity), .groups = "drop")
+```
+
+```{r}
+chr2.ds.actual <- 
+    sim.results.full.chr2 %>% 
+    ggplot(aes(x = sample.size, y = actual.sensitivity)) +
+    geom_boxplot(outlier.size = 1) +
+    theme_bw_custom +
+    labs(title = "Chr 2", y = "Sensitivity (%)", x = "Number of Probes") +
+    scale_fill_viridis_d(alpha = 0.8)
+chr2.ds.actual
+```
+
+```{r}
+chr2.ds <- 
+    sim.results.full.chr2 %>% 
+    ggplot(aes(x = sample.size, y = true.pos.p, fill = cn.sim.class)) +
+    geom_boxplot(outlier.size = 1) +
+    coord_cartesian(ylim = c(20,100)) +
+    theme_bw_custom +
+    theme(legend.position = "top") + 
+    labs(title = "Chr 2", y = "Theoretical Sensitivity (%)", x = "Number of Probes", fill = "Copy Number") +
+    scale_fill_manual(values = c("#785EF0", "#648FFF", "#DC267F", "#FE6100", "#FFB000"))
+chr2.ds
+```
+
+```{r}
+chr2.ds <- 
+    sim.results.full.chr2 %>% 
+    ggplot(aes(x = sample.size, y = true.pos.p, color = cn.sim.class)) +
+    ggdist::stat_pointinterval(position = "dodge", point_color = "black", point_size = 1) +
+    theme_bw_custom +
+    theme(legend.position = "top", panel.grid.minor = element_blank()) + 
+    labs(y = "Theoretical Sensitivity (%)", x = "Number of Probes", color = "Copy Number") +
+    scale_color_manual(values = c("#785EF0", "#648FFF", "#DC267F", "#FE6100", "#FFB000"), labels = 1:5) +
+    annotate("text", x = 11, y = 20, label = "Chr 2 ", size = 8) +
+    scale_y_continuous(limits = c(20,100)) 
+chr2.ds
+```
+```{r}
+saveRDS(chr2.ds, file = here("figures", "figure-d", "exp01.rpe1.chr2.downsampleProbes.RDS"))
+```
+
+### Chr 6
+
+```{r}
+sim.results.full.chr6 <- readRDS(file = here("datasets", "chr6.downsampleProbesSim.results.RDS"))
+```
+
+Combine results
+
+```{r}
+sim.results.full.chr6$sample.size <- as.factor(sim.results.full.chr6$sample.size)
+sim.results.full.chr6$replicate <- as.factor(sim.results.full.chr6$replicate)
+sim.results.full.chr6$true.pos.p <- sim.results.full.chr6$true.pos.p * 100
+```
+
+```{r}
+chr6.actual.sensitivity <- sim.results.full.chr6 %>% 
+    select(feature.id, sample.size, replicate, actual.sensitivity) %>% 
+    distinct()
+
+chr6.actual.sensitivity.iqr <- chr6.actual.sensitivity %>% group_by(sample.size) %>% 
+    summarize(iqr = IQR(actual.sensitivity), .groups = "drop")
+```
+
+```{r}
+chr6.ds.actual <- 
+    sim.results.full.chr6 %>% 
+    ggplot(aes(x = sample.size, y = actual.sensitivity)) +
+    geom_boxplot(outlier.size = 1) +
+    theme_bw_custom +
+    labs(title = "Chr 6", y = "Sensitivity (%)", x = "Number of Probes") +
+    scale_fill_viridis_d(alpha = 0.8)
+chr6.ds.actual
+```
+
+```{r}
+chr6.ds <- 
+    sim.results.full.chr6 %>% 
+    ggplot(aes(x = sample.size, y = true.pos.p, fill = cn.sim.class)) +
+    geom_boxplot(outlier.size = 1) +
+    coord_cartesian(ylim = c(20,100)) +
+    theme_bw_custom +
+    theme(legend.position = "top") + 
+    labs(title = "Chr 6", y = "Theoretical Sensitivity (%)", x = "Number of Probes", fill = "Copy Number") +
+    scale_fill_manual(values = c("#785EF0", "#648FFF", "#DC267F", "#FE6100", "#FFB000"))
+chr6.ds
+```
+
+```{r}
+chr6.ds <- 
+    sim.results.full.chr6 %>% 
+    ggplot(aes(x = sample.size, y = true.pos.p, color = cn.sim.class)) +
+    ggdist::stat_pointinterval(position = "dodge", point_color = "black", point_size = 1) +
+    theme_bw_custom +
+    theme(legend.position = "top", panel.grid.minor = element_blank()) + 
+    labs(y = "Theoretical Sensitivity (%)", x = "Number of Probes", color = "Copy Number") +
+    scale_color_manual(values = c("#785EF0", "#648FFF", "#DC267F", "#FE6100", "#FFB000"), labels = 1:5) +
+    annotate("text", x = 8, y = 20, label = "Chr 6", size = 8) +
+    scale_y_continuous(limits = c(20,100))
+chr6.ds
+```
+
+```{r}
+saveRDS(chr6.ds, file = here("figures", "figure-d", "exp01.rpe1.chr6.downsampleProbes.RDS"))
+```
+
+### Combination
+
+```{r}
+sim.results.combined <- rbind(sim.results.full.chr2, sim.results.full.chr6)
+sim.results.combined <- sim.results.combined %>% select(feature.id, sample.size, replicate, actual.sensitivity) %>% 
+    distinct()
+sim.results.combined.iqr <- sim.results.combined %>% group_by(feature.id, sample.size) %>% 
+    summarize(iqr = IQR(actual.sensitivity), .groups = "drop")
+```
+
+```{r}
+sim.results.combined %>% group_by(feature.id, sample.size) %>% summarize(ms = median(actual.sensitivity), .groups = "drop") %>% group_by(feature.id) %>% summarize(min(ms), max(ms))
+sim.results.combined.iqr %>% group_by(feature.id) %>% filter(!sample.size %in% c(18,24)) %>% summarize(min(iqr), max(iqr), .groups = "drop")
+``` 
+
+```{r}
+probe.ds.sim.actual <- 
+sim.results.combined %>% 
+    ggplot(aes(x = sample.size, y = actual.sensitivity, fill = feature.id)) +
+    geom_boxplot(outlier.size = 1, alpha = 0.9, width = 0.5, position = position_dodge(width = 0.8), outlier.alpha = 0.7) +
+    coord_cartesian(ylim = c(48,100)) +
+    theme_bw_custom +
+    theme(legend.position = "top", axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.grid.minor = element_blank()) +
+    theme(legend.box.margin = margin(0, 10, 0, 10), legend.margin = margin(0), plot.margin = unit(c(0, 5.5, 0, 5.5), "pt")) +
+    labs(y = "Sensitivity (%)", x = "", fill = "Chromosome") +
+    
+    scale_fill_manual(values = c("#DC267F", "#648FFF"))
+probe.ds.sim.actual
+```
+
+```{r}
+probe.ds.sim.actual.ggdist <- 
+sim.results.combined %>% 
+    ggplot(aes(x = sample.size, y = actual.sensitivity, color = feature.id)) +
+    ggdist::stat_pointinterval(position = position_dodge(width = 0.75), point_color = "black", point_size = 1) +
+    coord_cartesian(ylim = c(48,100)) +
+    theme_bw_custom +
+    theme(legend.position = "top", axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.grid.minor = element_blank()) +
+    theme(legend.box.margin = margin(0, 10, 0, 10), legend.margin = margin(0), plot.margin = unit(c(0, 5.5, 0, 5.5), "pt")) +
+    labs(y = "Sensitivity (%)", x = "", color = "Chromosome") +
+    scale_color_manual(values = c("#DC267F", "#648FFF"))
+probe.ds.sim.actual.ggdist
+```
+
+```{r}
+probe.ds.sim.actual.iqr <- 
+sim.results.combined.iqr %>% 
+    ggplot(aes(x = sample.size, y = iqr, group = feature.id, color = feature.id)) +
+    geom_line(alpha = 0.6) +
+    theme_bw_custom +
+    theme(legend.position = "none", plot.margin = unit(c(0,8,8,8), "pt"),
+          panel.grid.minor = element_blank()) +
+    labs(y = "IQR", x = "Number of Probes", color = "Chromosome") +
+    scale_color_manual(values = c("#DC267F", "#648FFF")) +
+    scale_y_continuous(limits = c(0, 14), expand = c(0,0,0,0), breaks = c(0,6,12))
+probe.ds.sim.actual.iqr
+```
+
+```{r}
+probe.ds.sim.actual.plot <- 
+cowplot::plot_grid(probe.ds.sim.actual.ggdist, probe.ds.sim.actual.iqr, ncol = 1, rel_heights = c(1, 0.4), 
+                   axis = "lr", align = "v") 
+probe.ds.sim.actual.plot
+```
+
+```{r}
+saveRDS(probe.ds.sim.actual.plot, file = here("figures", "figure-d", "exp01.rpe1.chr2and6.downsampleProbes.RDS"))
+```
+
+```{r}
+theo.legend <- get_legend(chr2.ds)
+```
+
+
+```{r}
+probe.ds.combined.theoretical <- 
+    plot_grid(plotlist = list(chr2.ds + theme(legend.position = "none"), 
+                          chr6.ds + theme(legend.position = "none", axis.title.y = element_blank(), axis.text.y = element_blank())))
+probe.ds.combined.theoretical.legend <- plot_grid(plotlist = list(theo.legend, probe.ds.combined.theoretical), ncol = 1, rel_heights = (c(.1, 1)))
+probe.ds.combined.theoretical.legend
+```
+
+```{r}
+saveRDS(probe.ds.combined.theoretical.legend, file = here("figures", "figure-d", "exp01.rpe1.chr2and6.downsampleProbes.theoretical.RDS"))
+```
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```

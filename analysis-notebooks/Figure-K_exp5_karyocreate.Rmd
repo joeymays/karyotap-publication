@@ -1,0 +1,269 @@
+---
+title: "Figure K - Exp 5 KaryoCreate"
+author: "Joey Mays"
+date: '2023-07-26'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+# Setup
+
+```{r message=FALSE}
+library(CNweaveR)
+library(tidyverse)
+library(ggplot2)
+library(here)
+library(cowplot)
+```
+
+```{r}
+set.seed(20230726)
+```
+
+```{r}
+here::i_am("analysis-notebooks/Figure-K_exp5_karyocreate.Rmd")
+```
+
+```{r}
+dir.create(here("figures", "figure-k"), showWarnings = F, recursive = T)
+fig.scalar = 1.375
+
+theme_bw_custom <- theme_bw()
+theme_bw_custom$axis.text <- element_text(size = 7)
+theme_bw_custom$axis.title <- element_text(size = 8)
+theme_bw_custom$legend.text <- element_text(size = 7)
+theme_bw_custom$legend.title <- element_text(size = 8)
+theme_bw_custom$strip.text <- element_text(size = 7)
+```
+
+# Load Data
+
+```{r}
+exp5 <- readRDS(file = here("datasets", "exp05.tapestriexperiment.RDS"))
+#exp5.full <- readRDS(file = here("datasets", "exp05.full.tapestriexperiment.RDS"))
+```
+
+# Analysis
+
+```{r}
+hcec.bcs <- colData(exp5) %>% as_tibble() %>% filter(cluster == "HCEC") %>% pull(cell.barcode)
+exp5.subset <- exp5[, hcec.bcs]
+```
+
+## Barcoding
+
+```{r}
+grna.lookup <- read.table(here("datasets", "exp05-grna-lookup.txt"), header = T)
+```
+
+```{r}
+exp5.subset <- countBarcodedReads(exp5.subset, bam.file = here("datasets", "exp05.cells.bam"), probe = "grna", barcode.lookup = grna.lookup, max.mismatch = 2, with.indels = F)
+```
+
+```{r}
+exp5.subset <- callSampleLables(exp5.subset, input.features = grna.lookup$id, output.feature = "sample.call", return.table = F, min.count.threshold = 2)
+```
+
+Calculate Gini coefficients for gRNAs to find doublets
+
+```{r}
+grna.counts <- colData(exp5.subset) %>% as_tibble() %>% column_to_rownames("cell.barcode") %>% select(starts_with("g"))
+grna.counts[grna.counts <= 5] <- 0 # zero out counts less than or eq to 5
+
+colData(exp5.subset)$grna.gini <- grna.counts %>% apply(MARGIN = 1, FUN = DescTools::Gini)
+```
+
+## Doublet Filtering
+
+~5% doublets
+
+```{r}
+grna.gini <- colData(exp5.subset) %>% as_tibble()
+summary(grna.gini$grna.gini >= 0.90)
+208/(3327+208)
+```
+
+Use gini coefficient to filter out gRNA doublets. 
+
+```{r}
+to.drop <- colData(exp5.subset) %>% as_tibble() %>% filter(grna.gini < 0.9) %>% pull(cell.barcode)
+exp5.subset <- exp5.subset[,!colnames(exp5.subset) %in% to.drop]
+```
+
+NA cells are hCECs without gRNA counts.
+
+```{r}
+fct_count(colData(exp5.subset)$sample.call)
+unlabeled <- colData(exp5.subset) %>% as_tibble() %>% filter(is.na(sample.call)) %>% pull(cell.barcode)
+exp5.subset <- exp5.subset[,!colnames(exp5.subset) %in% unlabeled]
+```
+
+## KayroCreate Analysis
+
+```{r}
+colData(exp5.subset)$sample.call <- fct_relevel(colData(exp5.subset)$sample.call, c("gNC", "g6_2", "g7_1", "g20_2", "g20_3", "g20_4", "g20_6", "g20_7"))
+grna.levels.control <- levels(colData(exp5.subset)$sample.call)
+grna.levels <- setdiff(grna.levels.control, "gNC")
+``` 
+
+0.3% of values are CN=4.
+
+```{r}
+cn.gmm.results.prop <- getTidyData(exp5.subset, alt.exp = "smoothedCopyNumberByChr", assay = "gmmCopyNumber") %>%
+    as_tibble() %>% filter(sample.call %in% grna.levels.control)
+cn.gmm.results.prop$gmmCopyNumber <- as.factor(cn.gmm.results.prop$gmmCopyNumber)
+summary(cn.gmm.results.prop$gmmCopyNumber)
+(240 * 100)/(sum(summary(cn.gmm.results.prop$gmmCopyNumber)))
+```
+
+Collapse copy number calls of 3 and 4 to one category.
+
+```{r}
+cn.gmm.results <- getTidyData(exp5.subset, alt.exp = "smoothedCopyNumberByChr", assay = "gmmCopyNumber") %>%
+    as_tibble() %>% filter(sample.call %in% grna.levels.control)
+cn.gmm.results$gmmCopyNumber <- as.factor(cn.gmm.results$gmmCopyNumber)
+
+cn.gmm.results.collapse <- cn.gmm.results
+cn.gmm.results.collapse$gmmCopyNumber <- fct_collapse(cn.gmm.results.collapse$gmmCopyNumber, "3+" = c("3", "4"))
+
+cn.gmm.results.collapse.prop <- cn.gmm.results.collapse %>% group_by(feature.id, sample.call) %>% dplyr::count(gmmCopyNumber) %>% mutate(cn.prop = round(n*100/sum(n),1)) %>% ungroup()
+cn.gmm.results.collapse.prop$sample.call <- fct_relevel(cn.gmm.results.collapse.prop$sample.call, grna.levels.control)
+```
+
+Calc p-values for Fishers exact test with multiple comparisons.
+
+```{r}
+calc.fisher <- function(grna){
+    cn.all <- cn.gmm.results.collapse %>% select(feature.id, gmmCopyNumber, sample.call) %>% group_split(.by = feature.id, .keep = F)
+    cn.fisher <- data.frame(chr = c(1:22, "X"))
+    cn.fisher$p.val <- cn.all %>% map(function(x){
+        x <- x %>% dplyr::select(gmmCopyNumber, sample.call) %>% filter(sample.call %in% c("gNC", grna))
+        x$sample.call <- fct_drop(x$sample.call)
+        x <- table(x)
+        fisher.test(x)
+    }) %>% map("p.value") %>% unlist()
+    
+    cn.fisher$p.adj <- p.adjust(cn.fisher$p.val, method = "bonferroni")
+    cn.fisher$p.adj.rounded <- round(cn.fisher$p.adj, 3)
+    return(cn.fisher)
+}
+
+fisher.result <- map(grna.levels, ~calc.fisher(.x))
+fisher.result <- fisher.result %>% list_rbind(names_to = "sample")
+fisher.result$sample <- factor(fisher.result$sample, levels = unique(fisher.result$sample), labels = grna.levels)
+fisher.result <- fisher.result %>% dplyr::select(sample, chr, p.adj.rounded) %>% pivot_wider(names_from = sample, values_from = p.adj.rounded) %>% print()
+```
+
+```{r}
+cn.gmm.results.collapse.prop %>% filter(gmmCopyNumber != "2") %>% 
+    mutate(gmmCopyNumber = fct_recode(gmmCopyNumber, "loss" = "1", "gain" = "3+")) %>% 
+    select(!n) %>% 
+    pivot_wider(id_cols = c("sample.call", "gmmCopyNumber"), names_from = feature.id, values_from = cn.prop)
+
+cn.gmm.results.collapse.prop %>% 
+    select(!n) %>% 
+    pivot_wider(id_cols = c("sample.call", "gmmCopyNumber"), names_from = feature.id, values_from = cn.prop) %>% 
+write.csv(., file = here("figures", "figure-k", "exp04.kc.results.csv"), col.names = T, row.names = F, quote = F)
+```
+
+### Plot v1
+
+Configure p-vals for plotting
+
+```{r}
+fisher.result.figure <- pivot_longer(fisher.result, starts_with("g"), values_to = "pval", names_to = "sample.call")
+colnames(fisher.result.figure)[1] <- "feature.id"
+fisher.result.figure$feature.id <- as.factor(fisher.result.figure$feature.id)
+fisher.result.figure$sample.call <- as.factor(fisher.result.figure$sample.call)
+fisher.result.figure$pval <- as.character(fisher.result.figure$pval)
+fisher.result.figure$pval[fisher.result.figure$pval == 1] <- ""
+fisher.result.figure$pval[fisher.result.figure$pval == 0] <- "<0.001"
+```
+
+```{r}
+fig.full.1 <- cn.gmm.results.collapse.prop %>% filter(feature.id %in% c(1:11)) %>% 
+    ggplot(aes(x = sample.call, y = cn.prop, fill = gmmCopyNumber)) +
+    geom_col() + 
+    theme_bw_custom +
+    facet_grid(feature.id ~ .) +
+    labs(x = "", y = "Proportion (%)", fill = "Copy Number") +
+    theme(strip.background = element_blank(), legend.position = "top", 
+          panel.border = element_blank(), panel.grid = element_blank(),
+          axis.text.x = element_text(angle = 45, hjust = 1), 
+           legend.key.size = unit(10, "pt")) +
+    scale_fill_manual(values = c("#235789", "grey95", "#972024")) +
+    geom_text(data = fisher.result.figure %>% filter(feature.id %in% c(1:11)), aes(label = pval, x = sample.call, y = 50), inherit.aes = F, size = 6/.pt) +
+    scale_y_continuous(breaks = c(0, 100))
+
+fig.full.2 <- cn.gmm.results.collapse.prop %>% filter(feature.id %in% c(12:17, 19:22, "X")) %>% 
+    ggplot(aes(x = sample.call, y = cn.prop, fill = gmmCopyNumber)) +
+    geom_col() + 
+    theme_bw_custom +
+    facet_grid(feature.id ~ .) +
+    labs(x = "", y = "Proportion (%)", fill = "Copy Number") +
+    theme(strip.background = element_blank(), legend.position = "top",
+          panel.border = element_blank(), panel.grid = element_blank(),
+          axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.key.size = unit(10, "pt")) +
+    scale_fill_manual(values = c("#235789", "grey95", "#972024")) +
+    geom_text(data = fisher.result.figure %>% filter(feature.id %in% c(12:17, 19:22, "X")), aes(label = pval, x = sample.call, y = 50), inherit.aes = F, size = 6/.pt) +
+    scale_y_continuous(breaks = c(0, 100)) +
+    guides(fill = "none")
+```
+
+```{r}
+saveRDS(fig.full.1, file = here("figures", "figure-k", "exp04.kc.1.RDS"))
+saveRDS(fig.full.2, file = here("figures", "figure-k", "exp04.kc.2.RDS"))
+```
+
+### Plot v2
+
+```{r}
+fig.full.wide <- 
+cn.gmm.results.collapse.prop %>% filter(feature.id %in% c(1:17, 19:22, "X")) %>% 
+    ggplot(aes(x = feature.id, y = cn.prop, fill = gmmCopyNumber)) +
+    geom_col() + 
+    theme_bw_custom +
+    facet_grid(sample.call ~ ., switch = "y") +
+    scale_fill_manual(values = c("#235789", "grey95", "#972024")) +
+    labs(x = "", y = "Proportion (%)", fill = "Copy Number") +
+    theme(strip.background = element_blank(), legend.position = "top", 
+          panel.border = element_blank(), panel.grid = element_blank(),
+          axis.text.x = element_text(angle = 0), 
+           legend.key.size = unit(10, "pt"), 
+          strip.placement = "outside") +
+    geom_text(data = fisher.result.figure %>% filter(feature.id != 18), aes(label = pval, x = feature.id, y = 50), inherit.aes = F, size = 6/.pt) +
+    scale_y_continuous(breaks = c(0, 100))
+fig.full.wide
+```
+
+```{r}
+saveRDS(fig.full.wide, file = here("figures", "figure-k", "exp04.kc.wide.RDS"))
+```
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```

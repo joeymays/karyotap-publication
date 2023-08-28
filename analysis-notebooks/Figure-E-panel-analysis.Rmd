@@ -1,0 +1,250 @@
+---
+title: "Figure E Analysis"
+author: "Joey Mays"
+date: '2023-01-17'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+# Setup
+
+```{r message=FALSE}
+library(CNweaveR)
+library(tidyverse)
+library(ggplot2)
+library(geomtextpath)
+library(here)
+library(cowplot)
+```
+
+```{r}
+set.seed(20221210)
+```
+
+```{r}
+here::i_am("analysis-notebooks/Figure-E-panel-analysis.Rmd")
+fig.scalar = 1.375 #figure size scalar
+
+theme_bw_custom <- theme_bw()
+theme_bw_custom$axis.text <- element_text(size = 7)
+theme_bw_custom$axis.title <- element_text(size = 8)
+theme_bw_custom$legend.text <- element_text(size = 7)
+theme_bw_custom$legend.title <- element_text(size = 8)
+theme_bw_custom$strip.text <- element_text(size = 7)
+```
+
+```{r}
+dir.create(path = here("figures", "figure-e"), showWarnings = F, recursive = T)
+```
+
+# Additive Scramble Simulation
+
+Adding chromosomes together to increase probe number on a hypothetical chromosome rather than randomly generating probes. 
+
+```{r}
+add.simulation.results <- readRDS(file = here("datasets", "scramble.probe.sim.results.RDS"))
+add.simulation.results <- add.simulation.results %>% mutate(true.pos.p = true.pos.p * 100)
+```
+
+```{r}
+probe.sim.combined <- 
+    ggplot(add.simulation.results, aes(x = n.probes, y = true.pos.p, color = cn.sim.class)) + 
+    ggdist::stat_pointinterval(point_interval = "mean_qi", point_size = 0.5, interval_alpha = 0.3) + 
+    theme_bw() +
+    labs(x = "Number of Probes", y = "Theoretical Sensitivity (%)", color = "Copy Number") +
+    theme(legend.position = "top") +
+    scale_color_viridis_d(labels = 1:5)
+probe.sim.combined
+```
+
+Thresholds for mean sensitivity
+
+```{r}
+find.thresh <- function(thresholds, mat){
+    df <- data.frame(matrix(NA, nrow = length(thresholds), ncol = 2, dimnames = list(NULL, c("n.probes", "threshold"))))
+    for(i in seq_along(thresholds)){
+        df$n.probes[i] <- suppressWarnings(min(mat$n.probes[mat$mean.tpr >= thresholds[i]]))
+        df$threshold[i] <- thresholds[i]
+    }
+    df$cn.sim.class <- unique(mat$cn.sim.class)
+    return(df)
+}
+```
+
+```{r}
+add.simulation.results.thresholds <- add.simulation.results %>%
+  group_by(n.probes, cn.sim.class) %>%
+  summarize(mean.tpr = mean(true.pos.p), .groups = "drop") %>%
+  group_split(cn.sim.class, ) %>%
+  map(~ find.thresh(thresholds = c(85, 90, 95, 98, 99, 99.9, 100), mat = .x)) %>%
+  list_rbind() %>%
+  pivot_wider(values_from = n.probes, names_from = cn.sim.class) %>% print()
+```
+
+```{r}
+ggplot(add.simulation.results, aes(x = n.probes, y = true.pos.p)) + 
+    ggdist::stat_pointinterval(point_interval = "mean_qi", point_size = 0.5, interval_color = "darkgrey") + 
+    theme_bw() +
+    labs(x = "Number of Probes", y = "Accuracy(%)") + 
+    scale_y_continuous(breaks = seq(20,100,10), expand = c(0,3,0,1)) +
+    scale_x_continuous(breaks = seq(0,120,20), expand = c(0,1,0,1)) +
+  facet_wrap(cn.sim.class ~ .)
+```
+
+```{r}
+quicksmooth <- function(x,y,span){
+    df <- data.frame(x, y)
+    result <- loess(y ~ x, data = df, span = span)
+    return(result$fitted)
+}
+```
+
+```{r}
+add.simulation.results.smooth <- 
+add.simulation.results %>% group_by(n.probes, cn.sim.class) %>% ggdist::mean_qi(true.pos.p, .width = c(.50, 0.95)) %>% mutate(.width = as.factor(.width)) %>% 
+    pivot_wider(names_from = .width, values_from = c(.upper, .lower)) %>% group_by(cn.sim.class) %>% 
+        mutate(across(c(true.pos.p, starts_with(".upper"), starts_with(".lower")), ~quicksmooth(n.probes, .x, span = 0.25))) %>% print()
+```
+
+```{r}
+probe.sim.combined.smoothed <- 
+ggplot(add.simulation.results.smooth, aes(x = n.probes, fill = cn.sim.class)) +
+    geom_ribbon(aes(ymin = .lower_0.5, ymax = .upper_0.5), alpha = 1) +
+    geom_ribbon(aes(ymin = .lower_0.95, ymax = .upper_0.95), alpha = 0.4) +
+    theme_bw_custom +
+    theme(legend.box.margin = margin(0, 10, 0, 10), legend.margin = margin(0), plot.margin = unit(c(0, 5.5, 5.5, 5.5), "pt"),
+          legend.key.size = unit(10, "pt"), panel.grid.minor = element_blank()) +
+    labs(x = "Number of Probes", y = "Theoretical Sensitivity (%)", fill = "Copy Number") + 
+    theme(legend.position = "top") +
+    scale_fill_manual(values = c("#785EF0", "#648FFF", "#DC267F", "#FE6100", "#FFB000"), labels = 1:5) +
+    scale_x_continuous(limits = c(5, 120), expand = c(0,0,0,0), breaks = c(5, seq(10,120,10)), trans = "log") +
+    scale_y_continuous(breaks = seq(20,100,10), expand = c(0,3,0,1)) +
+    geom_line(aes(y = true.pos.p))
+probe.sim.combined.smoothed
+```
+
+```{r}
+probe.sim.combined.smoothed.split <- 
+ggplot(add.simulation.results.smooth, aes(x = n.probes, fill = cn.sim.class)) +
+    geom_ribbon(aes(ymin = .lower_0.5, ymax = .upper_0.5), alpha = 1) +
+    geom_ribbon(aes(ymin = .lower_0.95, ymax = .upper_0.95), alpha = 0.4) +
+    theme_bw() +
+    labs(x = "Number of Probes", y = "Theoretical Sensitivity (%)", fill = "Copy Number") + 
+    scale_y_continuous(breaks = seq(20,100,10), expand = c(0,3,0,1)) +
+    facet_wrap(cn.sim.class ~ .) +
+    theme(strip.background = element_blank(), legend.position = "none") +
+    scale_fill_manual(values = c("#785EF0", "#648FFF", "#DC267F", "#FE6100", "#FFB000"), labels = 1:5) +
+    scale_x_continuous(limits = c(5, 120), expand = c(0,0,0,0)) +
+    geom_line(aes(y = true.pos.p))
+probe.sim.combined.smoothed.split
+```
+
+```{r}
+cn1.inset <- 
+add.simulation.results.smooth %>% 
+    filter(cn.sim.class == "sim_cn1") %>% 
+    ggplot(aes(x = n.probes, fill = cn.sim.class)) +
+    geom_ribbon(aes(ymin = .lower_0.5, ymax = .upper_0.5), alpha = 1) +
+    geom_ribbon(aes(ymin = .lower_0.95, ymax = .upper_0.95), alpha = 0.4) +
+    theme_bw() +
+    labs(x = "Number of Probes", y = "Theoretical Sensitivity (%)", fill = "Copy Number") + 
+    theme(legend.position = "none", plot.background = element_blank(), axis.title = element_blank()) +
+    scale_fill_manual(values = c("#785EF0")) +
+    geom_line(aes(y = true.pos.p)) +
+    scale_x_continuous(limits = c(5, 50), expand = c(0,0,0,0), breaks = c(seq(10,50,10))) +
+    scale_y_continuous(limits = c(90, 100), breaks = seq(90,100,5), expand = c(0,0.5,0,0.5))
+cn1.inset
+```
+
+```{r eval = F}
+cn2.inset <- 
+add.simulation.results.smooth %>% 
+    filter(cn.sim.class == "sim_cn2") %>% 
+    ggplot(aes(x = n.probes, fill = cn.sim.class)) +
+    geom_ribbon(aes(ymin = .lower_0.5, ymax = .upper_0.5), alpha = 1) +
+    geom_ribbon(aes(ymin = .lower_0.95, ymax = .upper_0.95), alpha = 0.4) +
+    theme_bw() +
+    labs(x = "Number of Probes", y = "Theoretical Sensitivity (%)", fill = "Copy Number") + 
+    theme(legend.position = "none", plot.background = element_blank(), axis.title = element_blank()) +
+    scale_fill_manual(values = c("#648FFF")) +
+    geom_line(aes(y = true.pos.p)) +
+    scale_x_continuous(limits = c(5, 50), expand = c(0,0,0,0), breaks = c(seq(10,50,10))) +
+    scale_y_continuous(limits = c(55, 100), breaks = seq(50,100,10), expand = c(0,0,0,1))
+cn2.inset
+```
+
+```{r}
+lab.size = 6/.pt
+legend.inset <- 
+add.simulation.results.smooth %>% 
+    filter(cn.sim.class == "sim_cn1") %>% 
+    ggplot(aes(x = n.probes, fill = cn.sim.class)) +
+    geom_ribbon(aes(ymin = .lower_0.5, ymax = .upper_0.5), alpha = 1) +
+    geom_ribbon(aes(ymin = .lower_0.95, ymax = .upper_0.95), alpha = 0.4) +
+    theme_bw() +
+    
+    geomtextpath::geom_textline(aes(y = .upper_0.95, label = "97.5%"), linewidth = .25, color = "grey25", size = lab.size, hjust = 1.0, textcolor = "black") +
+    geomtextpath::geom_textline(aes(y = .upper_0.5, label = "75%"), linewidth = .25, color = "grey25", size = lab.size, hjust = 0.65, textcolor = "black") +
+    geomtextpath::geom_textline(aes(y = true.pos.p, label = "mean"), linewidth = .5, color = "black", size = lab.size, hjust = 0.40) +
+    geomtextpath::geom_textline(aes(y = .lower_0.5, label = "25%"), linewidth = .25, color = "grey25", size = lab.size, hjust = 0.15, textcolor = "black") +
+    geomtextpath::geom_textline(aes(y = .lower_0.95, label = "2.5%"), linewidth = .25, color = "grey25", size = lab.size, hjust = 0.10, textcolor = "black") +
+
+    
+    
+    theme(legend.position = "none", plot.background = element_blank(), axis.title = element_blank(), panel.background = element_blank(),
+          axis.ticks = element_blank(), axis.text = element_blank(), panel.grid = element_blank(), panel.border = element_blank()) +
+    scale_fill_manual(values = c("grey")) +
+    scale_x_continuous(limits = c(5, 15), expand = c(0,0,0,0)) +
+    scale_y_continuous(limits = c(90, 100), breaks = seq(90,100,5), expand = c(0,0.5,0,0.5))
+legend.inset
+```
+
+```{r}
+probe.sim.combined.smoothed.split.plot <- 
+ggdraw(probe.sim.combined.smoothed.split) +
+    draw_plot(cn1.inset, 0.17, 0.535, 0.20, 0.25) +
+    draw_plot(legend.inset, 0.72, 0.08, 0.25, 0.4)
+probe.sim.combined.smoothed.split.plot
+```
+
+```{r}
+saveRDS(probe.sim.combined.smoothed.split.plot, file = here("figures", "figure-e", "exp01.rpe1.probeSim.scramble.split.RDS"))
+```
+
+```{r}
+probe.sim.combined.smoothed.legend.plot <- 
+ggdraw(probe.sim.combined.smoothed) +
+    draw_plot(legend.inset, 0.72, 0.04, 0.25, 0.6)
+probe.sim.combined.smoothed.legend.plot
+```
+
+```{r}
+saveRDS(probe.sim.combined.smoothed.legend.plot, file = here("figures", "figure-e", "exp01.rpe1.probeSim.scramble.RDS"))
+```
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```

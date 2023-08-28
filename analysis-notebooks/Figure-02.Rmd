@@ -1,0 +1,82 @@
+---
+title: "Figure 2"
+author: "Joey Mays"
+date: '2023-08-01'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+# Setup
+
+```{r message=FALSE}
+library(tidyverse)
+library(here)
+library(ggplotify)
+library(cowplot)
+```
+
+```{r}
+here::i_am("analysis-notebooks/Figure-02.Rmd")
+```
+
+```{r}
+dir.create(here("figures"), showWarnings = F, recursive = T)
+fig.scalar = 1.375 #figure size scalar
+```
+
+```{r}
+wc.hm <- readRDS(here("figures", "figure-c", "exp01.wc.smooth.heatmap.RDS"))
+wc.sens <- readRDS(here("figures", "figure-c", "exp01.rpe1.accuracy.wc.RDS"))
+wc.sens.nprobes <- readRDS(here("figures", "figure-c", "exp01.rpe1.accuracy.wc.regression.RDS"))
+wc.theoretical.tpr <- readRDS(here("figures", "figure-c", "exp01.wc.theoretical.tpr.RDS"))
+gmm.example <- readRDS(here("figures", "figure-c", "exp01.gmm.example.plot.RDS"))
+wc.sens.mad <- readRDS(here("figures", "figure-c", "exp01.rpe1.accuracy.wc.mad.RDS"))
+```
+
+```{r}
+plot.placeholder <- ggplot() + geom_blank()
+plot.placeholder.white <- ggplot() + geom_blank() + theme(panel.background = element_blank())
+```
+
+```{r}
+p2 <- plot_grid(plotlist = list(gmm.example, wc.sens.mad), ncol = 2, labels = c("B.", "C."), label_size = 12, scale = 0.95)
+p3 <- plot_grid(plotlist = list(wc.sens.nprobes, wc.theoretical.tpr), ncol = 2, labels = c("D.", "E."), label_size = 12, scale = 0.95)
+p4 <- plot_grid(plotlist = list(as.ggplot(wc.hm), p2, p3), ncol = 1, rel_heights = c(2, 1, 1), labels = c("A."), label_size = 12, scale = c(0.95, 1, 1))
+
+cowplot::plot_grid(plotlist = list(plot.placeholder.white , p4), labels = "Figure 2", label_size = 12, ncol = 1, rel_heights = c(1,40), hjust = -0.05)
+```
+
+```{r}
+ggsave(filename = here("figures", "Figure-02.pdf"), 
+       device = "pdf", width = 8.25, height = 10.75)
+```
+
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```
+
+

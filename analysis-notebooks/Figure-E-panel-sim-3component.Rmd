@@ -1,0 +1,148 @@
+---
+title: "Figure E Simulation - 3 component model"
+author: "Joey Mays"
+date: '2023-01-17'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+# Setup
+
+```{r message=FALSE}
+library(CNweaveR)
+library(tidyverse)
+library(ggplot2)
+library(here)
+library(furrr)
+```
+
+```{r}
+set.seed(20221210)
+```
+
+```{r}
+plan(multicore, workers = parallel::detectCores())
+```
+
+```{r}
+here::i_am("analysis-notebooks/Figure-E-panel-sim-3component.Rmd")
+```
+```{r}
+source(here("scripts", "gmm-calc-TPR.R"))
+```
+
+```{r}
+dir.create(path = here("figures", "figure-e"), showWarnings = F)
+```
+
+# Load Data
+
+```{r}
+exp1 <- readRDS(file = here("datasets", "exp01.tapestriexperiment.RDS"))
+```
+
+# Additive Scramble Simulation
+
+Adding chromosomes together to increase probe number on a hypothetical chromosome rather than randomly generating probes. 
+
+```{r}
+ploidy.existing <- getTidyData(exp1, assay = "counts") %>% filter(cluster == "RPE1")
+```
+
+```{r}
+chr.sample <- ploidy.existing %>% filter(chr %in% c(1,2,3,4,5,6))
+```
+
+```{r}
+chr.sample.ploidy <- chr.sample %>% select(feature.id, cell.barcode, counts) %>% pivot_wider(id_cols = cell.barcode, names_from = feature.id, values_from = "counts") %>% column_to_rownames("cell.barcode")
+```
+
+```{r}
+n.replicates <- 30
+```
+
+```{r}
+#scramble probe matrix 50 times
+probe.scramble.list <- list()
+
+for(i in seq_len(n.replicates)){
+    probe.sample <- sample(ncol(chr.sample.ploidy), size = ncol(chr.sample.ploidy))
+    probe.sample <- chr.sample.ploidy[,probe.sample]
+    probe.scramble.list[[i]] <- probe.sample
+}
+
+```
+
+```{r}
+add.probe.simulation <- function(idx, probe.sample) {
+  true.pos.rate <- list()
+  
+  #start at 4 probes to prevent division by 0 at normalization
+  for (i in 4:ncol(probe.sample)) {
+    sim.ploidy <-  probe.sample[, 1:i, drop = F]
+    sim.ploidy.t <- t(sim.ploidy)
+    
+    probe.metadata <- data.frame(
+        chr = 1,
+        start.pos = 1,
+        end.pos = 100,
+        probe.id = colnames(sim.ploidy),
+        row.names = colnames(sim.ploidy)
+      )
+    
+    #convenience object, manually add copy number values, calc GMM parameters and CN calls
+    x <- CNweaveR:::.createTapestriExperiment.sim(counts = sim.ploidy.t, probe.metadata = probe.metadata)
+    colData(x)$cluster <- "RPE1"
+    x <- calcNormCounts(x)
+    control.cn <- generateControlCopyNumberTemplate(x, copy.number = 2, sample.feature.label = "RPE1")  
+    x <- calcCopyNumber(x, control.copy.number = control.cn, sample.feature = "cluster", remove.bad.probes = T)
+    x <- suppressMessages(calcSmoothCopyNumber(x))
+    x <- suppressMessages(calcGMMCopyNumber(x, cell.barcodes = colnames(x), control.copy.number = control.cn, model.components = 1:3))
+    
+    true.pos.rate[[(i - 3)]] <-
+      calcTruePosRate(x) %>% dplyr::select(feature.id, cn.sim.class, true.pos.p) %>%
+      add_column(n.probes = i) %>% filter(cn.sim.class != "sim_cn6")
+  }
+  
+  true.pos.rate <- list_rbind(true.pos.rate)
+  true.pos.rate <- true.pos.rate %>% add_column(replicate = idx)
+  
+  return(true.pos.rate)
+}
+```
+
+```{r}
+add.simulation.results <- map2(seq_len(n.replicates), probe.scramble.list, ~add.probe.simulation(.x, .y), .progress = T)
+add.simulation.results <- list_rbind(add.simulation.results)
+```
+
+```{r}
+saveRDS(add.simulation.results, file = here("datasets", "scramble.probe.sim.results.3component.RDS"))
+```
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```

@@ -1,0 +1,171 @@
+---
+title: "Figure G Simulation"
+author: "Joey Mays"
+date: '2023-01-22'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+# Setup
+
+```{r message=FALSE}
+library(CNweaveR)
+library(tidyverse)
+library(ggplot2)
+library(here)
+library(scuttle)
+library(furrr)
+```
+
+```{r}
+set.seed(20221210)
+```
+
+```{r}
+plan(multicore, workers = parallel::detectCores())
+```
+
+```{r}
+here::i_am("analysis-notebooks/Figure-G-depth-sim.Rmd")
+```
+
+```{r}
+source(here("scripts", "gmm-calc-TPR.R"))
+```
+
+```{r}
+dir.create(path = here("figures", "figure-g"), showWarnings = F)
+```
+
+# Load Data
+
+```{r}
+exp1 <- readRDS(file = here("datasets", "exp01.tapestriexperiment.RDS"))
+#exp1.full <- readRDS(file = here("datasets", "exp01.full.tapestriexperiment.RDS"))
+```
+
+# Analysis
+
+```{r}
+#careful here, variable names are misleading 
+rpe.cells <- colData(exp1) %>% as.data.frame() %>% filter(cluster == "RPE1") %>% pull(cell.barcode)
+#exp1.rpe <- exp1[,rpe.cells]
+exp1.test <- exp1
+```
+
+We removed some probes that would hit 0 median normalized reads when downsampled, resulting in NaN values so they were removed prior to running the simulation. 
+
+```{r}
+excluded.probes <- c("AMPL161354", "AMPL158167", "AMPL160050", "AMPL159297", "AMPL147390", "AMPL158363", "AMPL148190", "AMPL158573", "AMPL158760", "AMPL160003")
+```
+
+```{r}
+exp1.test <- exp1.test[setdiff(rownames(exp1.test), excluded.probes),]
+```
+
+```{r}
+#downsample by 80, 60, 40, 20 percent, 50 times each
+downsample.levels <- seq(0.8, 0.2, -0.2)
+downsample.n.reps <- 50
+```
+
+```{r}
+downsample.sequence <- rep(downsample.levels, each = downsample.n.reps)
+downsample.sequence <- c(downsample.sequence, 1.0)
+```
+
+```{r downsample matrix}
+# runs in 255 seconds on macbook (~5 mins)
+downsample.matrix <- function(downsample.sequence, count.matrix){
+        scuttle::downsampleMatrix(count.matrix, prop = downsample.sequence, bycol = F)
+}
+
+count.matrix <- assay(exp1.test, "counts")
+downsample.matrix.list <- map(downsample.sequence, ~scuttle::downsampleMatrix(count.matrix, prop = .x, bycol = F), .progress = T)
+```
+
+```{r prep tapestri objects}
+#runs on macbook in 850 seconds (~14 mins)
+prep.te <- function(matrix.ds){
+    
+    te <- CNweaveR:::.createTapestriExperiment.sim(counts = matrix.ds, probe.metadata = te.probe.metadata)
+    te <- calcNormCounts(te)
+    colData(te)$cluster <- te.cluster
+    te <- te[,rpe.cells] #subset to RPE1
+    
+    control.cn <- generateControlCopyNumberTemplate(te, copy.number = 2, sample.feature.label = "RPE1")
+    control.cn["chr10q","copy.number"] <- 3
+    te <- calcCopyNumber(te, control.cn, sample.feature = "cluster", remove.bad.probes = T)
+    te <- suppressMessages(calcSmoothCopyNumber(te))
+    
+    #dropping extra weight for memory and parallelization
+    assay(te, "normcounts") <- NULL
+    assay(te, "copyNumber") <- NULL
+    assay(altExp(te, "smoothedCopyNumberByChr"), "discreteCopyNumber") <- NULL
+    assay(altExp(te, "smoothedCopyNumberByArm"), "discreteCopyNumber") <- NULL
+    
+    return(te)
+}
+
+te.probe.metadata <- rowData(exp1.test)
+te.cluster <- colData(exp1.test)$cluster
+ds.te.list <- map(downsample.matrix.list, ~prep.te(.x), .progress = T)
+```
+
+```{r}
+downsample.sequence.list <- data.frame(ds.seq = downsample.sequence, rep = c(rep(1:downsample.n.reps, length(downsample.levels)), 1)) %>% as.list %>% list_transpose()
+```
+
+```{r}
+calculate.accuracy <- function(te.ds, downsample.sequence){
+    
+    cn.control <- generateControlCopyNumberTemplate(te.ds, copy.number = 2)
+    cn.control["chr10q","copy.number"] <- 3
+    
+    te.ds <- suppressMessages(calcGMMCopyNumber(te.ds, cell.barcodes = colnames(te.ds), 
+                               control.copy.number = cn.control, 
+                               model.components = 1:6))
+    
+    te.tidy <- calcTruePosRate(te.ds) %>% dplyr::select(feature.id, cn.sim.class, true.pos.p) %>% 
+        add_column(ds.level = downsample.sequence[1]) %>% add_column(rep = downsample.sequence[2])
+    
+    return(te.tidy)
+}
+```
+
+```{r calculate accuracy}
+downsample.results <- future_map2(ds.te.list, downsample.sequence.list, ~calculate.accuracy(te.ds = .x, downsample.sequence = .y), .progress = T,  .options = furrr_options(seed = 20221210))
+downsample.results <- list_rbind(downsample.results)
+downsample.results$ds.level <- factor(downsample.results$ds.level, levels = c(1, 0.8, 0.6, 0.4, 0.2))
+```
+
+```{r}
+saveRDS(downsample.results, file = here("datasets", "exp1.rpe1.readDepthSim.results.RDS"))
+```
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```

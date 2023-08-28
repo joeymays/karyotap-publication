@@ -1,0 +1,83 @@
+---
+title: "Figure 5"
+author: "Joey Mays"
+date: '2023-08-02'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+# Setup
+
+```{r message=FALSE}
+library(tidyverse)
+library(here)
+library(ggplotify)
+library(cowplot)
+```
+
+```{r}
+here::i_am("analysis-notebooks/Figure-05.Rmd")
+```
+
+```{r}
+dir.create(here("figures"), showWarnings = F, recursive = T)
+fig.scalar = 1.375 #figure size scalar
+```
+
+```{r}
+rpe1.wc.sensitivity <- readRDS(here("figures", "figure-i", "exp04.rpe1.sensitivity.wc.RDS"))
+rpe1.wc.sensitivity.mad <- readRDS(here("figures", "figure-i", "exp04.rpe1.sensitivity.wc.mad.RDS"))
+rpe1.wc.sensitivity.change <- readRDS(here("figures", "figure-i", "exp04.rpe1.sensitivity.wc.change.RDS"))
+rpe1.wc.sensitivity.change.lm <- readRDS(here("figures", "figure-i", "exp04.rpe1.sensitivity.wc.change.regression.RDS"))
+rpe1.arm.sensitivity <- readRDS(here("figures", "figure-i", "exp04.rpe1.accuracy.arm.RDS"))
+rpe1.arm.sensitivity.mad <- readRDS(here("figures", "figure-i", "exp04.rpe1.sensitivity.arm.mad.RDS"))
+rpe1.arm.sensitivity.change <- readRDS(here("figures", "figure-i", "exp04.rpe1.sensitivity.arm.change.RDS"))
+exp04.barcode.hist <- readRDS(file = here("figures", "figure-j", "exp04.barcode.hist.RDS"))
+```
+
+```{r}
+plot.placeholder <- ggplot() + geom_blank() + theme(panel.background = element_blank())
+```
+
+```{r}
+p1 <- plot_grid(plotlist = list(wc.sensitivity.mad, rpe1.wc.sensitivity.change), nrow = 2, rel_heights = c(1,0.75), labels = c("A.", "B."), align = "v", axis = "lr", scale = 0.95, label_size = 12) 
+p2 <- plot_grid(plotlist = list(p1, rpe1.wc.sensitivity.change.lm), nrow = 1, rel_widths = c(1,0.7), labels = c("", "C."), scale = c(1, 0.95), label_size = 12) 
+p4 <- plot_grid(plotlist = list(plot.placeholder, exp04.barcode.hist), labels = c("F.", "G."), ncol = 2, scale = 0.95, label_size = 12)
+p5 <- plot_grid(plotlist = list(p2, rpe1.arm.sensitivity.mad, rpe1.arm.sensitivity.change, p4, plot.placeholder), ncol = 1, rel_heights = c(1.5, 0.75, 0.75, 1.5, 1.5), labels = c("", "D.", "E.", ""), scale = c(1, 0.95, 0.95, 1, 1), label_size = 12)
+cowplot::plot_grid(plotlist = list(plot.placeholder, p5), labels = "Figure 5", label_size = 12, ncol = 1, rel_heights = c(1,40), hjust = -0.05)
+```
+
+
+```{r}
+ggsave(filename = here("figures", "Figure-05.pdf"), 
+       device = "pdf", width = 8.25, height = 10.75)
+```
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```
+
+

@@ -1,0 +1,76 @@
+---
+title: "Figure 4"
+author: "Joey Mays"
+date: '2023-08-02'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+# Setup
+
+```{r message=FALSE}
+library(tidyverse)
+library(here)
+library(ggplotify)
+library(cowplot)
+```
+
+```{r}
+here::i_am("analysis-notebooks/Figure-04.Rmd")
+```
+
+```{r}
+dir.create(here("figures"), showWarnings = F, recursive = T)
+fig.scalar = 1.375 #figure size scalar
+```
+
+```{r}
+probe.ds.sim.actual.plot <- readRDS(file = here("figures", "figure-d", "exp01.rpe1.chr2and6.downsampleProbes.RDS"))
+probe.sim.combined <- readRDS(file = here("figures", "figure-e", "exp01.rpe1.probeSim.scramble.RDS"))
+plot.regression <- readRDS(file = here("figures", "figure-g", "exp01.downsample.depthByProbe.RDS"))
+```
+
+```{r}
+plot.placeholder <- ggplot() + geom_blank() + theme(panel.background = element_blank())
+```
+
+```{r}
+p2 <- plot_grid(plotlist = list(probe.ds.sim.actual.plot, probe.sim.combined), nrow = 1, rel_widths = c(0.7,1), labels = c("A.", "B."), label_size = 12, scale = 0.95, align = "h", axis = "tb") 
+p3 <- plot_grid(plotlist = list(p2, plot.regression, plot.placeholder, plot.placeholder), ncol = 1, rel_heights = c(1, 0.8, 1, 0.7), labels = c("", "C.", ""), 
+                label_size = 12, scale = c(1, 0.95, 0.95))
+cowplot::plot_grid(plotlist = list(plot.placeholder, p3), labels = "Figure 4", label_size = 12, ncol = 1, rel_heights = c(1,40), hjust = -0.05)
+```
+
+```{r}
+ggsave(filename = here("figures", "Figure-04.pdf"), 
+       device = "pdf", width = 8.25, height = 10.75)
+```
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```
+
+
