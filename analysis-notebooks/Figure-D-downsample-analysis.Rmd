@@ -32,7 +32,7 @@ Plot for Figure 4A.
 # Setup
 
 ```{r message=FALSE}
-library(CNweaveR)
+library(karyotapR)
 library(tidyverse)
 library(ggplot2)
 library(here)

@@ -30,7 +30,7 @@ editor_options:
 # Setup
 
 ```{r message=FALSE}
-library(CNweaveR)
+library(karyotapR)
 library(tidyverse)
 library(ggplot2)
 library(here)
@@ -113,7 +113,7 @@ add.probe.simulation <- function(idx, probe.sample) {
       )
     
     #convenience object, manually add copy number values, calc GMM parameters and CN calls
-    x <- CNweaveR:::.createTapestriExperiment.sim(counts = sim.ploidy.t, probe.metadata = probe.metadata)
+    x <- karyotapR:::.createTapestriExperiment.sim(counts = sim.ploidy.t, probe.metadata = probe.metadata)
     colData(x)$cluster <- "RPE1"
     x <- calcNormCounts(x)
     control.cn <- generateControlCopyNumberTemplate(x, copy.number = 2, sample.feature.label = "RPE1")  

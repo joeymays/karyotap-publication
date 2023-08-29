@@ -178,8 +178,8 @@ co610.tab <- data.frame(seqnames = co610$chr,
                         end = co610$amplicon_end, 
                         id = co610$AmpID)
 
-suppressWarnings(co261.tab <- CNweaveR:::.GetCytobands.df(co261.tab))
-suppressWarnings(co610.tab <- CNweaveR:::.GetCytobands.df(co610.tab))
+suppressWarnings(co261.tab <- karyotapR:::.GetCytobands.df(co261.tab))
+suppressWarnings(co610.tab <- karyotapR:::.GetCytobands.df(co610.tab))
 
 co261.tab$arm.letter <- co261.tab$arm %>% str_sub(start = -1, end = -1)
 co610.tab$arm.letter <- co610.tab$arm %>% str_sub(start = -1, end = -1)

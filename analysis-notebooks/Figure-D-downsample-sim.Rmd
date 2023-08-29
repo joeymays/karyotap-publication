@@ -30,7 +30,7 @@ editor_options:
 # Setup
 
 ```{r message=FALSE}
-library(CNweaveR)
+library(karyotapR)
 library(tidyverse)
 library(ggplot2)
 library(here)
@@ -101,7 +101,7 @@ for(i in seq_len(length(rpe1.probe.samples))){
     row.data <- data.frame(probe.id = rpe1.probe.samples[[i]], chr = 2, 
                            start.pos = 0, end.pos = 100, row.names = rpe1.probe.samples[[i]])
   
-  te <- CNweaveR:::.createTapestriExperiment.sim(counts = current.mat, probe.metadata = row.data)
+  te <- karyotapR:::.createTapestriExperiment.sim(counts = current.mat, probe.metadata = row.data)
   assay(te, "counts") <- current.mat
   assay(te, "copyNumber") <- rpe1.copynumber[rpe1.probe.samples[[i]], ]
   
@@ -182,7 +182,7 @@ for(i in seq_len(length(rpe1.probe.samples))){
     row.data <- data.frame(probe.id = rpe1.probe.samples[[i]], chr = 6, 
                            start.pos = 0, end.pos = 100, row.names = rpe1.probe.samples[[i]])
   
-  te <- CNweaveR:::.createTapestriExperiment.sim(counts = current.mat, probe.metadata = row.data)
+  te <- karyotapR:::.createTapestriExperiment.sim(counts = current.mat, probe.metadata = row.data)
   assay(te, "counts") <- current.mat
   assay(te, "copyNumber") <- rpe1.copynumber[rpe1.probe.samples[[i]], ]
   

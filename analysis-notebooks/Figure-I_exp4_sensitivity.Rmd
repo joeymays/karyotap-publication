@@ -30,7 +30,7 @@ editor_options:
 # Setup
 
 ```{r message=FALSE}
-library(CNweaveR)
+library(karyotapR)
 library(ggplot2)
 library(here)
 library(cowplot)

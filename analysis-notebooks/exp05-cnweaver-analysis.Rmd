@@ -1,5 +1,5 @@
 ---
-title: "Exp 005-CO610 CNweaveR analysis"
+title: "Exp 005-CO610 karyotapR analysis"
 author: "Joey Mays"
 date: '2023-07-26'
 output:
@@ -30,7 +30,7 @@ editor_options:
 # Setup
 
 ```{r message=FALSE}
-library(CNweaveR)
+library(karyotapR)
 library(tidyverse)
 library(ggplot2)
 library(ggdist)
@@ -42,7 +42,7 @@ set.seed(20230726)
 ```
 
 ```{r}
-here::i_am("analysis-notebooks/exp05-cnweaver-analysis.Rmd")
+here::i_am("analysis-notebooks/exp05-karyotapR-analysis.Rmd")
 ```
 
 # Load Data

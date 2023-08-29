@@ -30,7 +30,7 @@ editor_options:
 # Setup
 
 ```{r message=FALSE}
-library(CNweaveR)
+library(karyotapR)
 library(tidyverse)
 library(ggplot2)
 library(here)
@@ -109,7 +109,7 @@ downsample.matrix.list <- map(downsample.sequence, ~scuttle::downsampleMatrix(co
 #runs on macbook in 850 seconds (~14 mins)
 prep.te <- function(matrix.ds){
     
-    te <- CNweaveR:::.createTapestriExperiment.sim(counts = matrix.ds, probe.metadata = te.probe.metadata)
+    te <- karyotapR:::.createTapestriExperiment.sim(counts = matrix.ds, probe.metadata = te.probe.metadata)
     te <- calcNormCounts(te)
     colData(te)$cluster <- te.cluster
     te <- te[,rpe.cells] #subset to RPE1
