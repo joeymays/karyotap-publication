@@ -569,6 +569,7 @@ exp4.gmm.metrics.3.avg <- exp4.gmm.metrics.3 %>% group_by(cn.sim.class) %>% summ
 ```
 
 ```{r}
+exp4.3comp.wc.sens <- 
 ggplot(exp4.gmm.metrics.3, aes(x = feature.id, y = true.pos.p)) +
     geom_col(aes(fill = cn.sim.class), color = "black", width = 0.85) +
     facet_wrap(cn.sim.class ~., ncol = 1) +
@@ -580,6 +581,11 @@ ggplot(exp4.gmm.metrics.3, aes(x = feature.id, y = true.pos.p)) +
     scale_y_continuous(breaks = c(0, 50, 100), expand = c(0,0,0,0)) +
     geom_text(aes(label=round(true.pos.p,0)), vjust = -1, size = 6/.pt) +
     geom_text(data = exp4.gmm.metrics.3.avg, aes(label = glue::glue("avg: {round(mean.tpr, 0)}%"), x = 22, y = 140), size = 6/.pt, inherit.aes = F)
+exp4.3comp.wc.sens
+```
+
+```{r}
+saveRDS(exp4.3comp.wc.sens, here("figures", "figure-i", "exp04.rpe1.tpr.wc.3comp.RDS"))
 ```
 
 ```{r}
@@ -925,6 +931,7 @@ exp4.gmm.metrics.arm.avg.3comp <- exp4.gmm.metrics.arm.3comp %>% group_by(cn.sim
 ```
 
 ```{r}
+exp4.3comp.arm.sens <- 
 ggplot(exp4.gmm.metrics.arm.3comp, aes(x = feature.id, y = true.pos.p)) +
     geom_col(aes(fill = cn.sim.class), color = "black", width = 0.75) +
     facet_wrap(cn.sim.class ~., ncol = 1) +
@@ -938,6 +945,11 @@ ggplot(exp4.gmm.metrics.arm.3comp, aes(x = feature.id, y = true.pos.p)) +
     scale_x_discrete(labels = exp4.gmm.metrics.arm.3comp$feature.label) +
     geom_text(aes(label=round(true.pos.p,0)), vjust = -1, size = 6/.pt) +
     geom_text(data = exp4.gmm.metrics.arm.avg.3comp, aes(label = glue::glue("avg: {round(mean.tpr, 0)}%"), x = 38, y = 120), size = 6/.pt, inherit.aes = F)
+exp4.3comp.arm.sens
+```
+
+```{r}
+saveRDS(exp4.3comp.arm.sens, here("figures", "figure-i", "exp04.rpe1.tpr.arm.3comp.RDS"))
 ```
 
 ```{r}
