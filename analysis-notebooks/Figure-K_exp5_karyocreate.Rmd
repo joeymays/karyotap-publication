@@ -149,6 +149,7 @@ cn.gmm.results.collapse$gmmCopyNumber <- fct_collapse(cn.gmm.results.collapse$gm
 
 cn.gmm.results.collapse.prop <- cn.gmm.results.collapse %>% group_by(feature.id, sample.call) %>% dplyr::count(gmmCopyNumber) %>% mutate(cn.prop = round(n*100/sum(n),1)) %>% ungroup()
 cn.gmm.results.collapse.prop$sample.call <- fct_relevel(cn.gmm.results.collapse.prop$sample.call, grna.levels.control)
+cn.gmm.results.collapse.prop <- cn.gmm.results.collapse.prop %>% complete(nesting(feature.id), gmmCopyNumber, sample.call, fill = list(n = 0, cn.prop = 0)) %>% print(n=100)
 ```
 
 Calc p-values for Fishers exact test with multiple comparisons.
@@ -187,7 +188,7 @@ cn.gmm.results.collapse.prop %>%
 write.csv(., file = here("figures", "figure-k", "exp04.kc.results.csv"), col.names = T, row.names = F, quote = F)
 ```
 
-### Plot v1
+### Plot 
 
 Configure p-vals for plotting
 
@@ -202,64 +203,38 @@ fisher.result.figure$pval[fisher.result.figure$pval == 0] <- "<0.001"
 ```
 
 ```{r}
-fig.full.1 <- cn.gmm.results.collapse.prop %>% filter(feature.id %in% c(1:11)) %>% 
-    ggplot(aes(x = sample.call, y = cn.prop, fill = gmmCopyNumber)) +
-    geom_col() + 
-    theme_bw_custom +
-    facet_grid(feature.id ~ .) +
-    labs(x = "", y = "Proportion (%)", fill = "Copy Number") +
-    theme(strip.background = element_blank(), legend.position = "top", 
-          panel.border = element_blank(), panel.grid = element_blank(),
-          axis.text.x = element_text(angle = 45, hjust = 1), 
-           legend.key.size = unit(10, "pt")) +
-    scale_fill_manual(values = c("#235789", "grey95", "#972024")) +
-    geom_text(data = fisher.result.figure %>% filter(feature.id %in% c(1:11)), aes(label = pval, x = sample.call, y = 50), inherit.aes = F, size = 6/.pt) +
-    scale_y_continuous(breaks = c(0, 100))
-
-fig.full.2 <- cn.gmm.results.collapse.prop %>% filter(feature.id %in% c(12:17, 19:22, "X")) %>% 
-    ggplot(aes(x = sample.call, y = cn.prop, fill = gmmCopyNumber)) +
-    geom_col() + 
-    theme_bw_custom +
-    facet_grid(feature.id ~ .) +
-    labs(x = "", y = "Proportion (%)", fill = "Copy Number") +
-    theme(strip.background = element_blank(), legend.position = "top",
-          panel.border = element_blank(), panel.grid = element_blank(),
-          axis.text.x = element_text(angle = 45, hjust = 1),
-          legend.key.size = unit(10, "pt")) +
-    scale_fill_manual(values = c("#235789", "grey95", "#972024")) +
-    geom_text(data = fisher.result.figure %>% filter(feature.id %in% c(12:17, 19:22, "X")), aes(label = pval, x = sample.call, y = 50), inherit.aes = F, size = 6/.pt) +
-    scale_y_continuous(breaks = c(0, 100)) +
-    guides(fill = "none")
+cn.gmm.results.collapse.prop.compare <- cn.gmm.results.collapse.prop %>% filter(sample.call == "gNC") %>% 
+    select(!c(sample.call, n)) %>% dplyr::rename(control.cn.prop = cn.prop) %>% 
+    right_join(cn.gmm.results.collapse.prop, by = c("feature.id", "gmmCopyNumber")) %>% 
+    replace_na(list(control.cn.prop = 0)) %>% 
+    mutate(delta.prop = cn.prop - control.cn.prop) %>% filter(gmmCopyNumber != 2, feature.id %in% c(1:17, 19:22, "X"))
 ```
 
 ```{r}
-saveRDS(fig.full.1, file = here("figures", "figure-k", "exp04.kc.1.RDS"))
-saveRDS(fig.full.2, file = here("figures", "figure-k", "exp04.kc.2.RDS"))
-```
-
-### Plot v2
-
-```{r}
-fig.full.wide <- 
-cn.gmm.results.collapse.prop %>% filter(feature.id %in% c(1:17, 19:22, "X")) %>% 
-    ggplot(aes(x = feature.id, y = cn.prop, fill = gmmCopyNumber)) +
-    geom_col() + 
+fig.full.wide.delta <- 
+cn.gmm.results.collapse.prop.compare %>% filter(sample.call != "gNC") %>% 
+    ggplot(aes(x = feature.id, y = delta.prop, fill = gmmCopyNumber)) +
+    geom_col(position = "dodge") + 
     theme_bw_custom +
+    geom_hline(yintercept = 0, linewidth = 0.25) +
     facet_grid(sample.call ~ ., switch = "y") +
-    scale_fill_manual(values = c("#235789", "grey95", "#972024")) +
-    labs(x = "", y = "Proportion (%)", fill = "Copy Number") +
+    scale_fill_manual(values = c("#2E93F2", "#F43239"), labels = c("Loss", "Gain")) +
+    labs(x = "", y = "\u0394 Proportion (pp)", fill = "Copy Number") +
+    scale_y_continuous(limits = c(-30, 30), breaks = c(-30, 0, 30)) + 
+    scale_x_discrete(position = "top") + 
     theme(strip.background = element_blank(), legend.position = "top", 
-          panel.border = element_blank(), panel.grid = element_blank(),
+          panel.grid = element_blank(), panel.spacing.y = unit(5, "mm"),
           axis.text.x = element_text(angle = 0), 
            legend.key.size = unit(10, "pt"), 
-          strip.placement = "outside") +
-    geom_text(data = fisher.result.figure %>% filter(feature.id != 18), aes(label = pval, x = feature.id, y = 50), inherit.aes = F, size = 6/.pt) +
-    scale_y_continuous(breaks = c(0, 100))
-fig.full.wide
+          strip.placement = "outside", axis.ticks.x = element_blank(), strip.text.y.left = element_text(angle = 0), panel.border = element_blank()) +
+    geom_text(data = fisher.result.figure %>% filter(feature.id != 18), aes(label = pval, x = feature.id, y = -20), inherit.aes = F, size = 6/.pt) + 
+    geom_vline(xintercept = seq(1.5, 21.5, 1), linewidth = 0.25, color = "grey") +
+    geom_hline(yintercept = c(-30, 30), alpha = 0.5, linewidth = 0.25, color = "grey", linetype = "dashed")
+fig.full.wide.delta
 ```
 
 ```{r}
-saveRDS(fig.full.wide, file = here("figures", "figure-k", "exp04.kc.wide.RDS"))
+saveRDS(fig.full.wide.delta, file = here("figures", "figure-k", "exp04.kc.wide.RDS"))
 ```
 
 # session_info
