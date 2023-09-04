@@ -36,9 +36,9 @@ Plotting:
 
 ```
 # Experiment Files
-rmarkdown::render('analysis-notebooks/exp01-cnweaver-analysis.Rmd', 'html_notebook', output_dir = "analysis-html"
-rmarkdown::render('analysis-notebooks/exp04-cnweaver-analysis.Rmd', 'html_notebook', output_dir = "analysis-html"
-rmarkdown::render('analysis-notebooks/exp05-cnweaver-analysis.Rmd', 'html_notebook', output_dir = "analysis-html"
+rmarkdown::render('analysis-notebooks/exp01-karyotapr-analysis.Rmd', 'html_notebook', output_dir = "analysis-html"
+rmarkdown::render('analysis-notebooks/exp04-karyotapr-analysis.Rmd', 'html_notebook', output_dir = "analysis-html"
+rmarkdown::render('analysis-notebooks/exp05-karyotapr-analysis.Rmd', 'html_notebook', output_dir = "analysis-html"
 
 # Figure 1
 rmarkdown::render('analysis-notebooks/Figure-A_panel-maps.Rmd', 'html_notebook', output_dir = "analysis-html"
