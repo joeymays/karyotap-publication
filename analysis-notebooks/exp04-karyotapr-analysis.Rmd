@@ -42,7 +42,7 @@ set.seed(20230411)
 ```
 
 ```{r}
-here::i_am("analysis-notebooks/exp04-karyotapR-analysis.Rmd")
+here::i_am("analysis-notebooks/exp04-karyotapr-analysis.Rmd")
 ```
 
 # Load Data
