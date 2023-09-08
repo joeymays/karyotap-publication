@@ -203,6 +203,7 @@ assayHeatmap(exp1.subset, alt.exp = "smoothedCopyNumberByArm", assay = "smoothed
 ```{r}
 assayHeatmap(exp1.subset, alt.exp = "smoothedCopyNumberByChr", assay = "gmmCopyNumber", split.row.by = "cluster", color.preset = "copy.number.denoise", name = "gmmCN", column_names_rot = 0, column_names_centered = T)
 ```
+
 ```{r}
 assayHeatmap(exp1.subset, alt.exp = "smoothedCopyNumberByArm", assay = "gmmCopyNumber", split.row.by = "cluster", color.preset = "copy.number.denoise", name = "gmmCN")
 ```

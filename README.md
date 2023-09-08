@@ -4,7 +4,11 @@ Codebook for analyses in Mays et al., 2023
 
 ## Data Availability
 
-*coming soon*
+- The current stable version of the `karyotapR` package is available on [CRAN](https://CRAN.R-project.org/package=karyotapR). 
+- The development version and source code of `karyotapR` is available on [Github](https://github.com/joeymays/karyotapR). 
+- Documentation and analysis tutorials for `karyotapR` are available at https://joeymays.xyz/karyotapR. 
+- The source code for `karyotapR` version 0.1 used for this study is archived on Zenodo under DOI https://doi.org/10.5281/zenodo.8305561.
+- Raw sequencing data and aligned reads are available at SRA under NCBI BioProject accession PRJNA950110. 
 
 ## Analysis
 
@@ -12,7 +16,7 @@ Codebook for analyses in Mays et al., 2023
 
 Analysis:
 
-- karyotapR
+- karyotapR v0.1 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8305561.svg)](https://doi.org/10.5281/zenodo.8305561)
 - here
 - tidyverse
 - GenomicRanges

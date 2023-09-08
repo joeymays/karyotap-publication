@@ -200,6 +200,7 @@ fisher.result.figure$sample.call <- as.factor(fisher.result.figure$sample.call)
 fisher.result.figure$pval <- as.character(fisher.result.figure$pval)
 fisher.result.figure$pval[fisher.result.figure$pval == 1] <- ""
 fisher.result.figure$pval[fisher.result.figure$pval == 0] <- "<0.001"
+fisher.result.figure$pval[fisher.result.figure$pval > 0.2] <- ""
 ```
 
 ```{r}
@@ -211,10 +212,15 @@ cn.gmm.results.collapse.prop.compare <- cn.gmm.results.collapse.prop %>% filter(
 ```
 
 ```{r}
+cn.gmm.results.collapse.prop.compare$alpha <- 1
+cn.gmm.results.collapse.prop.compare$alpha <- ifelse(cn.gmm.results.collapse.prop.compare$delta.prop < 0, 0.2, 1)
+```
+
+```{r}
 fig.full.wide.delta <- 
 cn.gmm.results.collapse.prop.compare %>% filter(sample.call != "gNC") %>% 
     ggplot(aes(x = feature.id, y = delta.prop, fill = gmmCopyNumber)) +
-    geom_col(position = "dodge") + 
+    geom_col(position = "dodge", aes(alpha = I(alpha))) + 
     theme_bw_custom +
     geom_hline(yintercept = 0, linewidth = 0.25) +
     facet_grid(sample.call ~ ., switch = "y") +
@@ -229,13 +235,24 @@ cn.gmm.results.collapse.prop.compare %>% filter(sample.call != "gNC") %>%
           strip.placement = "outside", axis.ticks.x = element_blank(), strip.text.y.left = element_text(angle = 0), panel.border = element_blank()) +
     geom_text(data = fisher.result.figure %>% filter(feature.id != 18), aes(label = pval, x = feature.id, y = -20), inherit.aes = F, size = 6/.pt) + 
     geom_vline(xintercept = seq(1.5, 21.5, 1), linewidth = 0.25, color = "grey") +
-    geom_hline(yintercept = c(-30, 30), alpha = 0.5, linewidth = 0.25, color = "grey", linetype = "dashed")
+    geom_hline(yintercept = c(-30, 30), alpha = 0.5, linewidth = 0.25, color = "grey", linetype = "dashed") +
+    guides(alpha = "none")
 fig.full.wide.delta
 ```
 
 ```{r}
-saveRDS(fig.full.wide.delta, file = here("figures", "figure-k", "exp04.kc.wide.RDS"))
+saveRDS(fig.full.wide.delta, file = here("figures", "figure-k", "exp05.kc.wide.RDS"))
 ```
+
+```{r}
+fisher.result.table <- pivot_longer(fisher.result, starts_with("g"), values_to = "pval", names_to = "sample.call")
+colnames(fisher.result.table)[2:3] <- c("sample", "p.value")
+```
+
+```{r}
+write.table(fisher.result.table, file = here("datasets", "exp05.fisher.results.txt"), quote = F, sep = "\t", row.names = F, col.names = T)
+```
+
 
 # session_info
 

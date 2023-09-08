@@ -45,7 +45,7 @@ fig.scalar = 1.375 #figure size scalar
 ```
 
 ```{r}
-fig.full.wide <- readRDS(file = here("figures", "figure-k", "exp04.kc.wide.RDS")) 
+fig.full.wide <- readRDS(file = here("figures", "figure-k", "exp05.kc.wide.RDS")) 
 ```
 
 ```{r}
