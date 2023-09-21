@@ -153,10 +153,17 @@ cn.gmm.results.collapse.prop <- cn.gmm.results.collapse.prop %>% complete(nestin
 ```
 
 Calc p-values for Fishers exact test with multiple comparisons.
+Collapse into 2 copies vs all other options (i.e., diploid vs aneulploid)
+
+```{r}
+cn.gmm.results.collapse.fisher <- cn.gmm.results.collapse
+cn.gmm.results.collapse.fisher$gmmCopyNumber <- fct_collapse(cn.gmm.results.collapse.fisher$gmmCopyNumber, "aneuploid" = c("3+",  "1"))
+cn.gmm.results.collapse.fisher$gmmCopyNumber <- fct_recode(cn.gmm.results.collapse.fisher$gmmCopyNumber, "diploid" = "2")
+```
 
 ```{r}
 calc.fisher <- function(grna){
-    cn.all <- cn.gmm.results.collapse %>% select(feature.id, gmmCopyNumber, sample.call) %>% group_split(.by = feature.id, .keep = F)
+    cn.all <- cn.gmm.results.collapse.fisher %>% select(feature.id, gmmCopyNumber, sample.call) %>% group_split(.by = feature.id, .keep = F)
     cn.fisher <- data.frame(chr = c(1:22, "X"))
     cn.fisher$p.val <- cn.all %>% map(function(x){
         x <- x %>% dplyr::select(gmmCopyNumber, sample.call) %>% filter(sample.call %in% c("gNC", grna))
@@ -165,8 +172,22 @@ calc.fisher <- function(grna){
         fisher.test(x)
     }) %>% map("p.value") %>% unlist()
     
-    cn.fisher$p.adj <- p.adjust(cn.fisher$p.val, method = "bonferroni")
+    cn.fisher$p.adj <- p.adjust(cn.fisher$p.val, method = "BH")
     cn.fisher$p.adj.rounded <- round(cn.fisher$p.adj, 3)
+    return(cn.fisher)
+}
+
+calc.fisher.raw <- function(grna){
+    cn.all <- cn.gmm.results.collapse.fisher %>% select(feature.id, gmmCopyNumber, sample.call) %>% group_split(.by = feature.id, .keep = F)
+    cn.fisher <- data.frame(chr = c(1:22, "X"))
+    cn.fisher$p.val <- cn.all %>% map(function(x){
+        x <- x %>% dplyr::select(gmmCopyNumber, sample.call) %>% filter(sample.call %in% c("gNC", grna))
+        x$sample.call <- fct_drop(x$sample.call)
+        x <- table(x)
+        fisher.test(x)
+    }) %>% map("p.value") %>% unlist()
+    
+    cn.fisher$p.val.rounded <- round(cn.fisher$p.val, 3)
     return(cn.fisher)
 }
 
@@ -174,6 +195,11 @@ fisher.result <- map(grna.levels, ~calc.fisher(.x))
 fisher.result <- fisher.result %>% list_rbind(names_to = "sample")
 fisher.result$sample <- factor(fisher.result$sample, levels = unique(fisher.result$sample), labels = grna.levels)
 fisher.result <- fisher.result %>% dplyr::select(sample, chr, p.adj.rounded) %>% pivot_wider(names_from = sample, values_from = p.adj.rounded) %>% print()
+
+fisher.result.raw <- map(grna.levels, ~calc.fisher.raw(.x))
+fisher.result.raw <- fisher.result.raw %>% list_rbind(names_to = "sample")
+fisher.result.raw$sample <- factor(fisher.result.raw$sample, levels = unique(fisher.result.raw$sample), labels = grna.levels)
+fisher.result.raw <- fisher.result.raw %>% dplyr::select(sample, chr, p.val.rounded) %>% pivot_wider(names_from = sample, values_from = p.val.rounded) %>% print()
 ```
 
 ```{r}
@@ -185,7 +211,7 @@ cn.gmm.results.collapse.prop %>% filter(gmmCopyNumber != "2") %>%
 cn.gmm.results.collapse.prop %>% 
     select(!n) %>% 
     pivot_wider(id_cols = c("sample.call", "gmmCopyNumber"), names_from = feature.id, values_from = cn.prop) %>% 
-write.csv(., file = here("figures", "figure-k", "exp04.kc.results.csv"), col.names = T, row.names = F, quote = F)
+write.csv(., file = here("figures", "figure-k", "exp05.kc.proportions.csv"), col.names = T, row.names = F, quote = F)
 ```
 
 ### Plot 
@@ -198,9 +224,12 @@ colnames(fisher.result.figure)[1] <- "feature.id"
 fisher.result.figure$feature.id <- as.factor(fisher.result.figure$feature.id)
 fisher.result.figure$sample.call <- as.factor(fisher.result.figure$sample.call)
 fisher.result.figure$pval <- as.character(fisher.result.figure$pval)
-fisher.result.figure$pval[fisher.result.figure$pval == 1] <- ""
-fisher.result.figure$pval[fisher.result.figure$pval == 0] <- "<0.001"
-fisher.result.figure$pval[fisher.result.figure$pval > 0.2] <- ""
+fisher.result.figure$pval.plot <- fisher.result.figure$pval
+fisher.result.figure$pval.plot[fisher.result.figure$pval == 0] <- "<0.001"
+fisher.result.figure$pval.plot[fisher.result.figure$pval > 0.1] <- ""
+g20.idx <- intersect(which(fisher.result.figure$sample.call %in% c("g20_2", "g20_3", "g20_4", "g20_6", "g20_7")),
+          which(fisher.result.figure$feature.id == 20))
+fisher.result.figure$pval.plot[g20.idx] <- fisher.result.figure$pval[g20.idx]
 ```
 
 ```{r}
@@ -233,7 +262,7 @@ cn.gmm.results.collapse.prop.compare %>% filter(sample.call != "gNC") %>%
           axis.text.x = element_text(angle = 0), 
            legend.key.size = unit(10, "pt"), 
           strip.placement = "outside", axis.ticks.x = element_blank(), strip.text.y.left = element_text(angle = 0), panel.border = element_blank()) +
-    geom_text(data = fisher.result.figure %>% filter(feature.id != 18), aes(label = pval, x = feature.id, y = -20), inherit.aes = F, size = 6/.pt) + 
+    geom_text(data = fisher.result.figure %>% filter(feature.id != 18), aes(label = pval.plot, x = feature.id, y = -20), inherit.aes = F, size = 6/.pt) + 
     geom_vline(xintercept = seq(1.5, 21.5, 1), linewidth = 0.25, color = "grey") +
     geom_hline(yintercept = c(-30, 30), alpha = 0.5, linewidth = 0.25, color = "grey", linetype = "dashed") +
     guides(alpha = "none")
@@ -246,11 +275,16 @@ saveRDS(fig.full.wide.delta, file = here("figures", "figure-k", "exp05.kc.wide.R
 
 ```{r}
 fisher.result.table <- pivot_longer(fisher.result, starts_with("g"), values_to = "pval", names_to = "sample.call")
-colnames(fisher.result.table)[2:3] <- c("sample", "p.value")
+colnames(fisher.result.table)[2:3] <- c("sample", "p.value.adjusted")
+
+fisher.result.raw.table <- pivot_longer(fisher.result.raw, starts_with("g"), values_to = "pval", names_to = "sample.call")
+colnames(fisher.result.raw.table)[2:3] <- c("sample", "p.value.raw")
+
+fisher.result.table.combined <- full_join(fisher.result.table, fisher.result.raw.table, by = c("chr", "sample"))
 ```
 
 ```{r}
-write.table(fisher.result.table, file = here("datasets", "exp05.fisher.results.txt"), quote = F, sep = "\t", row.names = F, col.names = T)
+write.csv(fisher.result.table.combined, file = here("figures", "figure-k", "exp05.fisher.results.csv"), quote = F, row.names = F, col.names = T)
 ```
 
 
