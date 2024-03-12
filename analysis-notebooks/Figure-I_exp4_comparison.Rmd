@@ -1,0 +1,112 @@
+---
+title: "Figure I - Exp4 vs Exp1 RPE1 Comparison"
+author: "Joey Mays"
+date: '2023-04-18'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+# Setup
+
+```{r message=FALSE}
+library(karyotapR)
+library(ggplot2)
+library(here)
+library(cowplot)
+library(ggrastr)
+library(tidyverse)
+```
+
+```{r}
+set.seed(20221210)
+```
+
+```{r}
+here::i_am("analysis-notebooks/Figure-I_exp4_comparison.Rmd")
+```
+
+```{r}
+exp1 <- readRDS(file = here("datasets", "exp01.tapestriexperiment.RDS"))
+exp4 <- readRDS(file = here("datasets", "exp04.tapestriexperiment.RDS"))
+```
+
+```{r}
+bc.lut.1 <- colData(exp1) %>% as_tibble() %>% select(cell.barcode, cluster)
+bc.lut.4 <- colData(exp4) %>% as_tibble() %>% select(cell.barcode, cluster)
+```
+
+```{r}
+gmm.anno.scale <- c("1" = "#2c7bb6", "2" = "#ffffff", "3" = "#fdae61", "4" = "#d7191c", "5" = "#d7191c", "6" = "#d7191c")
+```
+
+```{r}
+exp1.wc <- exp1[,pull(filter(bc.lut.1, cluster == "RPE1"), cell.barcode)]
+exp1.wc.hm <- assayHeatmap(exp1.wc, alt.exp = "smoothedCopyNumberByChr", assay = "gmmCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 0, color.custom = gmm.anno.scale, heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number")
+
+exp4.wc <- exp4[,pull(filter(bc.lut.4, cluster == "RPE1"), cell.barcode)]
+exp4.wc.hm <- assayHeatmap(exp4.wc, alt.exp = "smoothedCopyNumberByChr", assay = "gmmCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 0, color.custom = gmm.anno.scale, heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number")
+```
+
+```{r}
+ht.list.wc <- exp1.wc.hm %v% exp4.wc.hm
+draw(ht.list.wc)
+```
+
+```{r}
+pdf(file = here("figures", "figure-i", "rpe1.comparison.wc.heatmap.pdf"), 
+    width = 7.90, height = 2.5)
+draw(ht.list.wc, use_raster = T, raster_quality = 7)
+dev.off()
+```
+
+
+```{r}
+exp1.arm <- exp1[,pull(filter(bc.lut.1, cluster == "RPE1"), cell.barcode)]
+exp1.arm.hm <- assayHeatmap(exp1.arm, alt.exp = "smoothedCopyNumberByArm", assay = "gmmCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 90, color.custom = gmm.anno.scale, heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number")
+
+exp4.arm <- exp4[,pull(filter(bc.lut.4, cluster == "RPE1"), cell.barcode)]
+exp4.arm.hm <- assayHeatmap(exp4.arm, alt.exp = "smoothedCopyNumberByArm", assay = "gmmCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 90, color.custom = gmm.anno.scale, heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number")
+```
+
+```{r}
+ht.list.arm <- exp1.arm.hm %v% exp4.arm.hm
+draw(ht.list.arm)
+```
+
+```{r}
+pdf(file = here("figures", "figure-i", "rpe1.comparison.arm.heatmap.pdf"), 
+    width = 7.90, height = 2.5)
+draw(ht.list.arm, use_raster = T, raster_quality = 7)
+dev.off()
+```
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```
+
+
+
+
+

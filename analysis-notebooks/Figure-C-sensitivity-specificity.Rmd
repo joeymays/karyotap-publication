@@ -248,6 +248,26 @@ draw(ht.list.hm, ht_gap = unit(c(12, 12, 12, 12), "mm"), use_raster = T, raster_
 dev.off()
 ```
 
+### GMM Heatmap
+
+```{r}
+gmm.anno.scale <- c("1" = "#2c7bb6", "2" = "#ffffff", "3" = "#fdae61", "4" = "#d7191c", "5" = "#d7191c", "6" = "#d7191c")
+```
+
+```{r}
+exp1.wc.gmm.heatmap <- 
+    assayHeatmap(exp1, alt.exp = "smoothedCopyNumberByChr", assay = "gmmCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 0, color.custom = gmm.anno.scale, heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number")
+exp1.wc.gmm.heatmap
+```
+
+```{r}
+pdf(file = here("figures", "figure-c", "exp01.wc.gmm.heatmap.pdf"), 
+    width = 4.2, height = 2.6)
+draw(exp1.wc.gmm.heatmap, use_raster = T, raster_quality = 7)
+dev.off()
+```
+
+
 ### Raw Matrix
 
 ```{r}
@@ -396,6 +416,24 @@ draw(ht.arm.list.hm, ht_gap = unit(c(12, 12, 12, 12), "mm"), use_raster = T, ras
 dev.off()
 ```
 
+### GMM Heatmap
+
+```{r}
+gmm.anno.scale <- c("1" = "#2c7bb6", "2" = "#ffffff", "3" = "#fdae61", "4" = "#d7191c", "5" = "#d7191c", "6" = "#d7191c")
+```
+
+```{r}
+exp1.arm.gmm.heatmap <- 
+    assayHeatmap(exp1, alt.exp = "smoothedCopyNumberByArm", assay = "gmmCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 90, color.custom = gmm.anno.scale, heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number")
+exp1.arm.gmm.heatmap
+```
+
+```{r}
+pdf(file = here("figures", "figure-c", "exp01.arm.gmm.heatmap.pdf"), 
+    width = 7.90, height = 2.75)
+draw(exp1.arm.gmm.heatmap, use_raster = T, raster_quality = 7)
+dev.off()
+```
 
 ### Raw Matrix
 
@@ -566,6 +604,83 @@ wc.sensitivity.mad
 
 ```{r}
 saveRDS(wc.sensitivity.mad, file = here("figures", "figure-c", "exp01.rpe1.accuracy.wc.mad.RDS"))
+```
+
+
+### Empirical Sensitivity for Cancer Cell CNVs
+
+Assuming that CNVs are clonal, what is the sensitivity for detection of CNVs in cancer cell lines, and do they match up with theoretical sensitivity expectations?
+
+LS513 - 1q, 5, 7, 9, 13x2, XY
+LoVo - 5p, 7, 12, 15, XY
+CL11 - -6, 7x2, -18, XY
+SW48 - 7, 14
+
+```{r}
+exp1.tpr <- calcTruePosRate(exp1, "chr") %>%  select(feature.id, cn.sim.class, true.pos.p)
+exp1.tpr$feature.id <- as.character(exp1.tpr$feature.id)
+exp1.tpr$true.pos.p <- round(exp1.tpr$true.pos.p * 100,1)
+exp1.tpr$cn.sim.class <- factor(exp1.tpr$cn.sim.class, levels = levels(exp1.tpr$cn.sim.class), labels = c(1:6))
+exp1.tpr$cn.sim.class <- as.numeric(as.character(exp1.tpr$cn.sim.class))
+colnames(exp1.tpr)[2:3] <- c("event", "sensitivity.sim")
+```
+
+```{r}
+empirical.sim.comparison <- function(cell.data, cell.lut){
+    
+    cell.data <- cell.data %>% filter(feature.id %in% cell.lut$feature.id) %>% left_join(cell.lut, by = 'feature.id') %>% mutate(known.cn = ifelse(is.na(known.cn), 2, known.cn)) %>% mutate(feature.id = factor(feature.id, labels = unique(cell.lut$feature.id)))
+    
+    cell.data.results <- cell.data %>% group_by(cell.barcode, feature.id) %>% summarise(cn.concordance = gmmCopyNumber == known.cn, .groups = "drop") %>% group_by(feature.id) %>% dplyr::count(cn.concordance) %>% mutate(sensitivity.emp = round(n*100/sum(n), 1)) %>% filter(cn.concordance == TRUE) %>% select(feature.id, n, sensitivity.emp) %>% left_join(cell.lut, by = "feature.id")
+    
+    cell.data.results %>% left_join(exp1.tpr, by = c("known.cn" = "event", "feature.id")) %>% select(feature.id, known.cn, sensitivity.emp, sensitivity.sim)
+    
+}
+```
+
+
+```{r}
+ls513.data <- getTidyData(exp1, "smoothedCopyNumberByChr", "gmmCopyNumber") %>% filter(cluster == "LS513") %>% select(!c("total.reads", "cluster"))
+
+ls513.lut <- data.frame(feature.id = c(5,7,9,13,"X"),
+                        known.cn = c(3,3,3,4,1))
+
+empirical.sim.comparison(ls513.data, ls513.lut)
+
+```
+
+
+```{r}
+lovo.data <- getTidyData(exp1, "smoothedCopyNumberByChr", "gmmCopyNumber") %>% filter(cluster == "LoVo") %>% select(!c("total.reads", "cluster"))
+
+lovo.lut <- data.frame(feature.id = c(7,12,15,"X"),
+                        known.cn = c(3,3,3,1))
+
+empirical.sim.comparison(lovo.data, lovo.lut)
+```
+
+```{r}
+cl11.data <- getTidyData(exp1, "smoothedCopyNumberByChr", "gmmCopyNumber") %>% filter(cluster == "CL11") %>% select(!c("total.reads", "cluster"))
+
+cl11.lut <- data.frame(feature.id = c(6, 7, 18, 22, "X"),
+                        known.cn = c(1, 4, 1, 1, 1))
+
+empirical.sim.comparison(cl11.data, cl11.lut)
+```
+
+```{r}
+sw48.data <- getTidyData(exp1, "smoothedCopyNumberByChr", "gmmCopyNumber") %>% filter(cluster == "SW48") %>% select(!c("total.reads", "cluster"))
+
+sw48.lut <- data.frame(feature.id = c("7", "14"),
+                        known.cn = c(3, 3))
+
+empirical.sim.comparison(sw48.data, sw48.lut)
+```
+
+```{r}
+empirical.sensitivity.list <- list(ls513 = empirical.sim.comparison(ls513.data, ls513.lut), 
+     lovo = empirical.sim.comparison(lovo.data, lovo.lut),
+     cl11 = empirical.sim.comparison(cl11.data, cl11.lut), 
+     sw48 = empirical.sim.comparison(sw48.data, sw48.lut))
 ```
 
 
@@ -953,6 +1068,66 @@ arm.sensitivity.mad
 saveRDS(arm.sensitivity.mad, file = here("figures", "figure-c", "exp01.rpe1.accuracy.arm.mad.RDS"))
 ```
 
+### Empirical Sensitivity for Cancer Cell CNVs
+
+Assuming that CNVs are clonal, what is the sensitivity for detection of CNVs in cancer cell lines, and do they match up with theoretical sensitivity expectations?
+
+LS513 - 1q, 5, 7, 9, 13x2, XY
+LoVo - 5p, 7, 12, 15, XY
+CL11 - -6, 7x2, -18, XY
+SW48 - 7, 14
+
+```{r}
+exp1.tpr.arm <- calcTruePosRate(exp1, "arm") %>%  select(feature.id, cn.sim.class, true.pos.p)
+exp1.tpr.arm$feature.id <- as.character(exp1.tpr.arm$feature.id)
+exp1.tpr.arm$true.pos.p <- round(exp1.tpr.arm$true.pos.p * 100,1)
+exp1.tpr.arm$cn.sim.class <- factor(exp1.tpr.arm$cn.sim.class, levels = levels(exp1.tpr.arm$cn.sim.class), labels = c(1:6))
+exp1.tpr.arm$cn.sim.class <- as.numeric(as.character(exp1.tpr.arm$cn.sim.class))
+colnames(exp1.tpr.arm)[2:3] <- c("event", "sensitivity.sim")
+```
+
+```{r}
+empirical.sim.comparison.arm <- function(cell.data, cell.lut){
+    
+    cell.data <- cell.data %>% filter(feature.id %in% cell.lut$feature.id) %>% left_join(cell.lut, by = 'feature.id') %>% mutate(known.cn = ifelse(is.na(known.cn), 2, known.cn)) %>% mutate(feature.id = factor(feature.id, labels = unique(cell.lut$feature.id)))
+    
+    cell.data.results <- cell.data %>% group_by(cell.barcode, feature.id) %>% summarise(cn.concordance = gmmCopyNumber == known.cn, .groups = "drop") %>% group_by(feature.id) %>% dplyr::count(cn.concordance) %>% mutate(sensitivity.emp = round(n*100/sum(n), 1)) %>% filter(cn.concordance == TRUE) %>% select(feature.id, n, sensitivity.emp) %>% left_join(cell.lut, by = "feature.id")
+    
+    cell.data.results %>% left_join(exp1.tpr.arm, by = c("known.cn" = "event", "feature.id")) %>% select(feature.id, known.cn, sensitivity.emp, sensitivity.sim)
+    
+}
+```
+
+
+```{r}
+ls513.data.arm <- getTidyData(exp1, "smoothedCopyNumberByArm", "gmmCopyNumber") %>% filter(cluster == "LS513") %>% select(!c("total.reads", "cluster"))
+
+ls513.lut.arm <- data.frame(feature.id = c("chr1p", "chr1q"),
+                        known.cn = c(2,3))
+
+empirical.sim.comparison.arm(ls513.data.arm, ls513.lut.arm)
+```
+
+```{r}
+lovo.data.arm <- getTidyData(exp1, "smoothedCopyNumberByArm", "gmmCopyNumber") %>% filter(cluster == "LoVo") %>% select(!c("total.reads", "cluster"))
+
+lovo.arm.lut <- data.frame(feature.id = c("chr5p", "chr5q"),
+                        known.cn = c(3,2))
+
+empirical.sim.comparison.arm(lovo.data.arm, lovo.arm.lut)
+
+```
+
+```{r}
+empirical.sensitivity.list$ls513.arm <- empirical.sim.comparison.arm(ls513.data.arm, ls513.lut.arm)
+empirical.sensitivity.list$lovo.arm <- empirical.sim.comparison.arm(lovo.data.arm, lovo.arm.lut)
+```
+
+```{r}
+saveRDS(empirical.sensitivity.list, file = here("datasets", "cellline.empirical.sim.comparison.RDS"))
+```
+
+
 ### Linear Regression
 
 ```{r}
@@ -1302,6 +1477,9 @@ ggplot(rpe1.data.results, aes(x=n.probes, y=pct.concordance)) +
     scale_x_continuous(trans = "log", limits = c(4,60), breaks = seq(4,60,4)) +
     geom_line(data = beta.predict, color = "red", linewidth = 0.7, alpha = 0.7)
 ```
+
+
+
 
 # session_info
 
