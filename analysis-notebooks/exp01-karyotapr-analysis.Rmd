@@ -35,6 +35,7 @@ library(tidyverse)
 library(ggplot2)
 library(ggdist)
 library(here)
+library(ComplexHeatmap)
 ```
 
 ```{r}
@@ -164,6 +165,14 @@ exp1.subset <- calcGMMCopyNumber(exp1.subset, cell.barcodes = rpe1.bc, control.c
 ```
 
 ```{r}
+assayHeatmap(exp1.subset, assay = "copyNumber", split.col.by = "chr", split.row.by = "cluster", color.preset = "copy.number.denoise")
+```
+
+```{r}
+colData(exp1.subset)$cluster <- fct_recode(colData(exp1.subset)$cluster, LS513 = "cellline1", RPE1 = "cellline2", SW48 = "cellline3", LoVo = "cellline4", CL11 = "cellline5")
+```
+
+```{r}
 smoothed.ploidy.tidy.chr <- getTidyData(exp1.subset, alt.exp = "smoothedCopyNumberByChr", assay = "smoothedCopyNumber")
 ```
 
@@ -185,15 +194,34 @@ ggplot(smoothed.ploidy.tidy.arm, aes(x = feature.id, y = smoothedCopyNumber)) + 
 # Heatmaps
 
 ```{r}
-assayHeatmap(exp1.subset, assay = "copyNumber", split.col.by = "chr", split.row.by = "cluster", color.preset = "copy.number.denoise")
+cellline.anno <- rowAnnotation(cellline = colData(exp1.subset)$cluster, annotation_name_side = "top", annotation_name_gp = grid::gpar(fontsize = 6),
+                               col = list(cellline = c("RPE1" = "#785EF0", "LS513" = "#648FFF", "SW48" = "#DC267F", "LoVo" = "#FE6100", "CL11" = "#FFB000")))
+```
+
+Unbiased clustering of all cell lines. 
+Excluding chr 16-22 to reduce noise
+
+```{r}
+exp1.subset.matrix <- scale(t(assay(altExp(exp1.subset, "smoothedCopyNumberByArm"), "smoothedCopyNumber"))[,c(1:27, 40, 41)])
+wss <- numeric(10)
+cluster.list <- list()
+
+for (i in seq_along(wss)) {
+  km.result <- kmeans(exp1.subset.matrix, centers = i, nstart = 10)
+  cluster.list[[i]] <- km.result$cluster
+  wss[i] <- km.result$tot.withinss
+}
+
+ggplot(data.frame(clusters = seq_along(wss), wss = wss), aes(x = clusters, y = wss, group = 1)) +
+    geom_point() +
+    geom_line()
+
+assayHeatmap(exp1.subset, alt.exp = "smoothedCopyNumberByArm", assay = "smoothedCopyNumber", color.preset = "copy.number", name = "smCN", 
+             left_annotation = cellline.anno, use_raster = T, row_split = cluster.list[[5]], border = F)
 ```
 
 ```{r}
-colData(exp1.subset)$cluster <- fct_recode(colData(exp1.subset)$cluster, LS513 = "cellline1", RPE1 = "cellline2", SW48 = "cellline3", LoVo = "cellline4", CL11 = "cellline5")
-```
-
-```{r}
-assayHeatmap(exp1.subset, alt.exp = "smoothedCopyNumberByChr", assay = "smoothedCopyNumber", split.row.by = "cluster", color.preset = "copy.number.denoise", name = "smCN", column_names_rot = 0)
+assayHeatmap(exp1.subset, alt.exp = "smoothedCopyNumberByChr", assay = "smoothedCopyNumber", split.row.by = "cluster", color.preset = "copy.number.denoise", name = "smCN", column_names_rot = 0, column_names_centered = T)
 ```
 
 ```{r}
@@ -207,6 +235,66 @@ assayHeatmap(exp1.subset, alt.exp = "smoothedCopyNumberByChr", assay = "gmmCopyN
 ```{r}
 assayHeatmap(exp1.subset, alt.exp = "smoothedCopyNumberByArm", assay = "gmmCopyNumber", split.row.by = "cluster", color.preset = "copy.number.denoise", name = "gmmCN")
 ```
+
+## Clustering
+
+### LoVo
+
+LoVo appears to have subclones with exclusive events in 5p and 15q
+
+```{r}
+exp1.subset.lovo <- exp1.subset[,colData(exp1.subset)$cluster == "LoVo"]
+```
+
+```{r}
+#subsetting only chr 5p, 15q 
+lovo.subset2 <- t(assay(altExp(exp1.subset.lovo, "smoothedCopyNumberByArm"), "smoothedCopyNumber"))[,c("chr5p", "chr15q")]
+wss <- numeric(10)
+cluster.list <- list()
+
+for (i in 1:10) {
+  km.result <- kmeans(lovo.subset2, centers = i, nstart = 10)
+  cluster.list[[i]] <- km.result$cluster
+  wss[i] <- km.result$tot.withinss
+}
+
+ggplot(data.frame(clusters = 1:10, wss = wss), aes(x = clusters, y = wss, group = 1)) +
+    geom_point() +
+    geom_line()
+```
+
+```{r}
+assayHeatmap(exp1.subset.lovo, alt.exp = "smoothedCopyNumberByArm", assay = "smoothedCopyNumber", split.row.by = "cluster", color.preset = "copy.number.denoise", name = "smCN", 
+             row_split = cluster.list[[2]])
+assayHeatmap(exp1.subset.lovo, alt.exp = "smoothedCopyNumberByArm", assay = "smoothedCopyNumber", split.row.by = "cluster", color.preset = "copy.number.denoise", name = "smCN", 
+             row_split = cluster.list[[3]])
+
+#split by chr15q value
+assayHeatmap(exp1.subset.lovo, alt.exp = "smoothedCopyNumberByArm", assay = "smoothedCopyNumber", split.row.by = "cluster", color.preset = "copy.number.denoise", name = "smCN", 
+             row_split = ifelse(lovo.subset2[,"chr15q"] > 2.8, 1, 2))
+```
+
+```{r}
+as.data.frame(lovo.subset2) %>% add_column(k2 = as.factor(cluster.list[[2]]), k3 = as.factor(cluster.list[[3]])) %>% 
+    pivot_longer(values_to = "cn", names_to = "chr", cols = starts_with("chr")) %>% 
+    ggplot(aes(x = cn)) +
+    geom_density() +
+    facet_grid(k2 ~ chr)
+
+as.data.frame(lovo.subset2) %>% add_column(k2 = as.factor(cluster.list[[2]]), k3 = as.factor(cluster.list[[3]])) %>% 
+    pivot_longer(values_to = "cn", names_to = "chr", cols = starts_with("chr")) %>% 
+    ggplot(aes(x = cn)) +
+    geom_density() +
+    facet_grid(k3 ~ chr)
+
+as.data.frame(lovo.subset2) %>% add_column(cluster = ifelse(lovo.subset2[,"chr15q"] > 2.8, 1, 2)) %>% 
+    pivot_longer(values_to = "cn", names_to = "chr", cols = starts_with("chr")) %>% 
+    ggplot(aes(x = cn)) +
+    geom_density() +
+    facet_grid(cluster ~ chr)
+```
+
+# Label Transfers
 
 # Save Objects
 
