@@ -7,7 +7,7 @@ output: html_notebook
 
 # Setup
 
-```{r message=FALSE}
+```{r, message=FALSE}
 library("karyoploteR")
 library(GenomicRanges)
 library(cowplot)
@@ -24,6 +24,9 @@ dir.create(here("figures", "figure-a"), showWarnings = F, recursive = T)
 fig.scalar = 1.375 #figure size scalar
 ```
 
+# Data Import
+
+## hg19 Cytobands
 
 Get cytobands from UCSC hg19 (https://hgdownload.cse.ucsc.edu/goldenpath/hg19/database/cytoBand.txt.gz) and create GRanges object.
 
@@ -36,65 +39,37 @@ cyto.hg19.gr <- GRanges(seqnames = cyto.hg19$chr,
                    cytoband = cyto.hg19$cytoband)
 ```
 
-# CO261 - Version 1
+## CO261 - Version 1
 
 ```{r}
 co261 <- read.table(here("panel-files", "CO261.designSummary.tab"), header = T, sep = '\t', fill = T)
 ```
 
-Create GRanges object
-
-```{r}
-co261.gr <- GRanges(seqnames = co261$chr, 
-                    ranges = IRanges(co261$amplicon_start, co261$amplicon_end), 
-                    amplicon.id = co261$AmpID, 
-                    seqinfo = Seqinfo(seqnames = unique(co261$chr), genome = "hg19"), 
-                    y0=0.1, y1=0.7)
-```
-
-# CO610 - Panel v3
+## CO610 - Panel V2
 
 ```{r}
 co610 <- read.table(here("panel-files", "CO610.designSummary.tab"), header = T, sep = '\t', fill = T)
 ```
 
-Create GRanges object
+## CO810 - Panel V3
+
+```{r}
+co810 <- read.table(here("panel-files", "CO810.designSummary.tab"), header = T, sep = '\t', fill = T)
+```
+
 
 # Plots
 
-## V1
+## V1, V2, V3
 
-```{r}
-plot.params <- getDefaultPlotParams(plot.type=1)
-plot.params$data1outmargin <- 20
-plot.params$data1height <- 100
-plot.params$data1inmargin <- 10
-```
-
-```{r}
-chr.names <- paste0("chr", 1:22)
-chr.names <- c(chr.names, "chrX", "chrY")
-n.probes <- summary(as.factor(co261$chr))
-n.probes <- n.probes[!names(n.probes) == "virus_ref"]
-n.probes <- n.probes[gtools::mixedorder(names(n.probes))]
-n.probes <- c(n.probes, 0)
-chr.names <- paste0(chr.names, " (", n.probes, ")  ")
-```
-
-```{r}
-karyo.261 <- plotKaryotype(genome="hg19", plot.params = plot.params, labels.plotter = NULL)
-kpAddChromosomeNames(karyo.261, cex = 0.7, chr.names = chr.names)
-kpRect(karyo.261, data = co261.gr, col="black", border="black")
-```
-
-## V1 and V3
+Create GRanges objects describing panel coordinates
 
 ```{r}
 co261.gr <- GRanges(seqnames = co261$chr, 
                     ranges = IRanges(co261$amplicon_start, co261$amplicon_end), 
                     amplicon.id = co261$AmpID, 
                     seqinfo = Seqinfo(seqnames = unique(co261$chr), genome = "hg19"), 
-                    y0=0.5, y1=0.1, x0 = as.numeric(co261$amplicon_start), x1 = as.numeric(co261$amplicon_start))
+                    y0=0.11, y1=0.1, x0 = as.numeric(co261$amplicon_start), x1 = as.numeric(co261$amplicon_start))
 ```
 
 ```{r}
@@ -102,8 +77,18 @@ co610.gr <- GRanges(seqnames = co610$chr,
                     ranges = IRanges(co610$amplicon_start, co610$amplicon_end), 
                     amplicon.id = co610$AmpID, 
                     seqinfo = Seqinfo(seqnames = unique(co610$chr), genome = "hg19"), 
-                    y0=1.0, y1=0.6, x0 = as.numeric(co610$amplicon_start), x1 = as.numeric(co610$amplicon_start))
+                    y0=0.41, y1=0.4, x0 = as.numeric(co610$amplicon_start), x1 = as.numeric(co610$amplicon_start))
 ```
+
+```{r}
+co810.gr <- GRanges(seqnames = co810$chr, 
+                    ranges = IRanges(co810$amplicon_start, co810$amplicon_end), 
+                    amplicon.id = co810$AmpID, 
+                    seqinfo = Seqinfo(seqnames = unique(co810$chr), genome = "hg19"), 
+                    y0=0.71, y1=0.7, x0 = as.numeric(co810$amplicon_start), x1 = as.numeric(co810$amplicon_start))
+```
+
+Plot parameters
 
 ```{r}
 plot.params <- getDefaultPlotParams(plot.type=1)
@@ -114,57 +99,34 @@ plot.params$ideogramheight <- 40
 ```
 
 ```{r}
-n.probes <- summary(as.factor(co261$chr))
-n.probes <- n.probes[!names(n.probes) == "virus_ref"]
-n.probes <- n.probes[gtools::mixedorder(names(n.probes))]
-n.probes <- c(n.probes, 0)
-n.probes.261 <- paste0("(", n.probes, ")  ")
-
-n.probes <- summary(as.factor(co610$chr))
-n.probes <- n.probes[!names(n.probes) %in% c("phage-cmv-dest-pmei", "pLENTI-gRNA")]
-n.probes <- n.probes[gtools::mixedorder(names(n.probes))]
-n.probes.610 <- paste0("(", n.probes, ")  ")
-```
-
-```{r}
-karyo.combined <- plotKaryotype(genome="hg19", plot.params = plot.params, labels.plotter = NULL, chromosomes = paste0("chr", 1:12))
-kpAddChromosomeNames(karyo.combined, cex = 0.6)
-kpArrows(karyo.combined, data = co610.gr, lwd=1, length=0.04, col="#E66100")
-kpArrows(karyo.combined, data = co261.gr, lwd=1, length=0.04, col="#5D3A9B")
-```
-
-```{r}
 left.karyo <- function(){
     karyo.combined <- plotKaryotype(genome="hg19", plot.params = plot.params, labels.plotter = NULL, chromosomes = paste0("chr", 1:12))
-    kpAddChromosomeNames(karyo.combined, cex = 0.6)
-    kpArrows(karyo.combined, data = co610.gr, lwd=1, length=0.04, col="#E66100")
-    kpArrows(karyo.combined, data = co261.gr, lwd=1, length=0.04, col="#5D3A9B")
+    kpAddChromosomeNames(karyo.combined, cex = 0.75)
+    kpArrows(karyo.combined, data = co610.gr, lwd=1.0, length=0.05, col="#E66100")
+    kpArrows(karyo.combined, data = co261.gr, lwd=1.0, length=0.05, col="#5D3A9B")
+    kpArrows(karyo.combined, data = co810.gr, lwd=1.0, length=0.05, col="#D41159")
 }
 
-p1 <- ggplotify::as.ggplot(expression(x <- left.karyo()))
-```
-
-```{r}
-karyo.combined <- plotKaryotype(genome="hg19", plot.params = plot.params, labels.plotter = NULL, chromosomes = paste0("chr", c(13:22, "X", "Y")))
-kpAddChromosomeNames(karyo.combined, cex = 0.6)
-kpArrows(karyo.combined, data = co610.gr, lwd=1, length=0.04, col="#E66100")
-kpArrows(karyo.combined, data = co261.gr, lwd=1, length=0.04, col="#5D3A9B")
+karyo.plot.left.side <- ggplotify::as.ggplot(expression(x <- left.karyo()))
+karyo.plot.left.side
 ```
 
 ```{r}
 right.karyo <- function(){
     karyo.combined <- plotKaryotype(genome="hg19", plot.params = plot.params, labels.plotter = NULL, chromosomes = paste0("chr", c(13:22, "X", "Y")))
-    kpAddChromosomeNames(karyo.combined, cex = 0.6)
-    #kpAddChromosomeNames(karyo.combined, cex = 0.6, chr.names = n.probes.261[13:24], xoffset = 0.035, yoffset = 46)
-    #kpAddChromosomeNames(karyo.combined, cex = 0.6, chr.names = n.probes.610[13:24], xoffset = 0.035, yoffset = 95)
-    kpArrows(karyo.combined, data = co610.gr, lwd=1, length=0.04, col="#E66100")
-    kpArrows(karyo.combined, data = co261.gr, lwd=1, length=0.04, col="#5D3A9B")
+    kpAddChromosomeNames(karyo.combined, cex = 0.75, xoffset = -0.02)
+    kpArrows(karyo.combined, data = co610.gr, lwd=1.0, length=0.05, col="#E66100")
+    kpArrows(karyo.combined, data = co261.gr, lwd=1.0, length=0.05, col="#5D3A9B")
+    kpArrows(karyo.combined, data = co810.gr, lwd=1.0, length=0.05, col="#D41159")
 }
 
-p2 <- ggplotify::as.ggplot(expression(x <- right.karyo()))
+karyo.plot.right.side <- ggplotify::as.ggplot(expression(x <- right.karyo()))
+karyo.plot.right.side
 ```
 
-# Table
+# Probes per Chromosome
+
+Table output
 
 ```{r}
 co261.tab <- data.frame(seqnames = co261$chr, 
@@ -177,30 +139,44 @@ co610.tab <- data.frame(seqnames = co610$chr,
                         end = co610$amplicon_end, 
                         id = co610$AmpID)
 
+co810.tab <- data.frame(seqnames = co810$chr, 
+                        start = co810$amplicon_start, 
+                        end = co810$amplicon_end, 
+                        id = co810$AmpID)
+
 suppressWarnings(co261.tab <- karyotapR:::.GetCytobands.df(co261.tab))
 suppressWarnings(co610.tab <- karyotapR:::.GetCytobands.df(co610.tab))
+suppressWarnings(co810.tab <- karyotapR:::.GetCytobands.df(co810.tab))
+
 
 co261.tab$arm.letter <- co261.tab$arm %>% str_sub(start = -1, end = -1)
 co610.tab$arm.letter <- co610.tab$arm %>% str_sub(start = -1, end = -1)
+co810.tab$arm.letter <- co810.tab$arm %>% str_sub(start = -1, end = -1)
 
 co261.tab <- co261.tab %>% filter(seqnames != "virus_ref") %>% count(seqnames, arm.letter) %>% pivot_wider(names_from = arm.letter, values_from = n) %>% replace_na(list(p=0, q=0)) %>% mutate(total = p + q)
 
 co610.tab <- co610.tab %>% filter(!seqnames %in% c("pLENTI-gRNA", "phage-cmv-dest-pmei")) %>% count(seqnames, arm.letter) %>% pivot_wider(names_from = arm.letter, values_from = n) %>% replace_na(list(p=0, q=0)) %>% mutate(total = p + q)
 
+co810.tab <- co810.tab %>% filter(!seqnames %in% c("pLENTI-gRNA", "phage-cmv-dest-pmei")) %>% count(seqnames, arm.letter) %>% pivot_wider(names_from = arm.letter, values_from = n) %>% replace_na(list(p=0, q=0)) %>% mutate(total = p + q)
+
 combined.tab <- full_join(co261.tab, co610.tab, by = "seqnames", suffix = c(".v1", ".v2")) %>%  mutate(across(where(is.numeric), ~ replace_na(.x, 0)))
+
+colnames(co810.tab)[2:4] <- c("p.v3", "q.v3", "total.v3")
+
+combined.tab <- full_join(combined.tab, co810.tab, by = "seqnames") %>%  mutate(across(where(is.numeric), ~ replace_na(.x, 0)))
 
 colnames(combined.tab)[1] <- c("chr")
 ```
 
-# Output
+# Outputs
 
 ```{r}
-write.table(combined.tab, file = here("figures", "CO261-CO610-probe-table.txt"), row.names = F, col.names = T, quote = F, sep = '\t')
+write.table(combined.tab, file = here("datasets", "probes-per-arm-allpanels.txt"), row.names = F, col.names = T, quote = F, sep = '\t')
 ```
 
 ```{r}
-saveRDS(p1, file = here("figures", "figure-a", "probe.map.1.RDS"))
-saveRDS(p2, file = here("figures", "figure-a", "probe.map.2.RDS"))
+saveRDS(karyo.plot.left.side, file = here("figures", "figure-a", "probe.map.left.RDS"))
+saveRDS(karyo.plot.right.side, file = here("figures", "figure-a", "probe.map.right.RDS"))
 ```
 
 # session_info

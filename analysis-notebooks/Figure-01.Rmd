@@ -42,12 +42,11 @@ here::i_am("analysis-notebooks/Figure-01.Rmd")
 
 ```{r}
 dir.create(here("figures"), showWarnings = F, recursive = T)
-fig.scalar = 1.375 #figure size scalar
 ```
 
 ```{r}
-probe.map.1 <- readRDS(file = here("figures", "figure-a", "probe.map.1.RDS"))
-probe.map.2 <- readRDS(file = here("figures", "figure-a", "probe.map.2.RDS"))
+probe.map.1 <- readRDS(file = here("figures", "figure-a", "probe.map.left.RDS"))
+probe.map.2 <- readRDS(file = here("figures", "figure-a", "probe.map.right.RDS"))
 ```
 
 ```{r}
@@ -56,7 +55,7 @@ plot.placeholder <- ggplot() + geom_blank() + theme(panel.background = element_b
 
 ```{r}
 p1 <- plot_grid(plotlist = list(probe.map.1, probe.map.2), ncol = 2, rel_widths = c(4.5, 3))
-plot_grid(plotlist = list(p1, plot.placeholder), ncol = 1, rel_heights = c(1,1.5), labels = "Figure 1", label_size = 12)
+plot_grid(plotlist = list(p1, plot.placeholder), ncol = 1, rel_heights = c(1,1.5))
 ```
 
 ```{r}
