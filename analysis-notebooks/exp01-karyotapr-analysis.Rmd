@@ -107,11 +107,11 @@ reducedDimPlot(exp1.subset, dim.reduction = "umap", group.label = "cluster")
 ## Probes
 
 ```{r}
-summary(rowData(exp1.subset)$median.reads > 0)
-rowData(exp1.subset)[rowData(exp1.subset)$median.reads == 0,]
+summary(rowData(exp1.subset)$median.reads > 5)
+rowData(exp1.subset)[rowData(exp1.subset)$median.reads <= 5,]
 ```
 ```{r}
-exp1.subset <- exp1.subset[rowData(exp1.subset)$median.reads > 0,] #8 filtered for exp 1
+exp1.subset <- exp1.subset[rowData(exp1.subset)$median.reads > 5,] #8 filtered for exp 1
 ```
 
 # Normalization
@@ -159,7 +159,7 @@ ploidy.tidy %>% group_by(feature.id, cluster) %>% summarize(median.ploidy = medi
 ## Copy Number Smoothing
 
 ```{r}
-exp1.subset <- calcSmoothCopyNumber(exp1.subset)
+exp1.subset <- calcSmoothCopyNumber(exp1.subset, method = "weighted.median", control.copy.number = control.copy.number)
 rpe1.bc <- colData(exp1.subset) %>% as_tibble() %>% filter(cluster == "cellline2") %>% pull(cell.barcode)
 exp1.subset <- calcGMMCopyNumber(exp1.subset, cell.barcodes = rpe1.bc, control.copy.number = control.copy.number, model.components = 1:6)
 ```
@@ -295,6 +295,18 @@ as.data.frame(lovo.subset2) %>% add_column(cluster = ifelse(lovo.subset2[,"chr15
 ```
 
 # Label Transfers
+
+```{r}
+full.coldata <- colData(exp1) %>% as_tibble() %>% select(-cluster)
+subset.coldata <- colData(exp1.subset) %>% as_tibble() %>% select(-total.reads)
+
+coldata.merge <- full.coldata %>% left_join(subset.coldata, by = "cell.barcode")
+
+all(colnames(exp1) == coldata.merge$cell.barcode)
+
+colData(exp1)$cluster <- coldata.merge$cluster
+```
+
 
 # Save Objects
 
