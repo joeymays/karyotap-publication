@@ -110,18 +110,18 @@ reducedDimPlot(exp5.subset, dim.reduction = "umap", group.label = "cluster")
 ## Probes
 
 ```{r}
-summary(rowData(exp5.subset)$median.reads > 0)
-rowData(exp5.subset)[rowData(exp5.subset)$median.reads == 0,]
+summary(rowData(exp5.subset)$median.reads > 5)
+rowData(exp5.subset)[rowData(exp5.subset)$median.reads <= 5,]
 ```
 
 ```{r}
-exp5.subset <- exp5.subset[rowData(exp5.subset)$median.reads > 0,] # 2 probes filtered for exp 5
+exp5.subset <- exp5.subset[rowData(exp5.subset)$median.reads > 5,] # 28 probes filtered for exp 5
 ```
 
 # Normalization
 
 ```{r}
-exp5.subset <- calcNormCounts(exp5.subset)
+exp5.subset <- calcNormCounts(exp5.subset, method = "libNorm", scaling.factor = 10000)
 ```
 
 ## Copy Number Calculation
@@ -170,7 +170,7 @@ cn.tidy %>%
 ## Copy Number Smoothing
 
 ```{r}
-exp5.subset <- calcSmoothCopyNumber(exp5.subset)
+exp5.subset <- calcSmoothCopyNumber(exp5.subset, method = "weighted.median", control.copy.number = control.copy.number, sample.feature = "cluster")
 rpe1.bc <- colData(exp5.subset) %>% as_tibble() %>% filter(cluster == "RPE1") %>% pull(cell.barcode)
 exp5.subset <- calcGMMCopyNumber(exp5.subset, cell.barcodes = rpe1.bc, control.copy.number = control.copy.number, model.components = 1:4)
 ```
@@ -217,6 +217,19 @@ assayHeatmap(exp5.subset, alt.exp = "smoothedCopyNumberByChr", assay = "gmmCopyN
 
 ```{r}
 assayHeatmap(exp5.subset, alt.exp = "smoothedCopyNumberByArm", assay = "gmmCopyNumber", split.row.by = "cluster", color.preset = "copy.number.denoise", name = "gmmCN")
+```
+
+# Label Transfers
+
+```{r}
+full.coldata <- colData(exp5) %>% as_tibble() %>% select(-cluster)
+subset.coldata <- colData(exp5.subset) %>% as_tibble() %>% select(-total.reads)
+
+coldata.merge <- full.coldata %>% left_join(subset.coldata, by = "cell.barcode")
+
+all(colnames(exp5) == coldata.merge$cell.barcode)
+
+colData(exp5)$cluster <- coldata.merge$cluster
 ```
 
 # Save Objects
