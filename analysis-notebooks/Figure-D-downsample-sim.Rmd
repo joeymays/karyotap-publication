@@ -39,7 +39,8 @@ library(furrr)
 
 ```{r}
 set.seed(20221210)
-plan(multicore, workers = parallel::detectCores())
+#plan(multicore, workers = parallel::detectCores())
+plan(multisession, workers = 4)
 ```
 
 ```{r}
@@ -58,7 +59,6 @@ dir.create(path = here("figures", "figure-d"), showWarnings = F)
 
 ```{r}
 exp1 <- readRDS(file = here("datasets", "exp01.tapestriexperiment.RDS"))
-#exp1.full <- readRDS(file = here("datasets", "exp01.full.tapestriexperiment.RDS"))
 ```
 
 # Analysis
@@ -81,8 +81,9 @@ Repeatedly sample probes. Start at 22 with 50 reps, add one instance of 24.
 n.reps <- 50 # n reps per probe level
 probe.levels <- seq(22, 4, -2) # sequence of probe levels
 downsample.sequence <- rep(probe.levels, each = n.reps)
-downsample.sequence <- c(24, downsample.sequence)
+downsample.sequence <- c(23, downsample.sequence)
 ```
+
 ```{r}
 rpe1.probe.samples <- list()
 for(i in seq_len(length(downsample.sequence))){
@@ -114,9 +115,15 @@ Simulation Function
 ```{r}
 sim.step <- function(tapestri.object.init, step, n.reps){
   
-    tapestri.object <- suppressMessages(calcSmoothCopyNumber(tapestri.object.init)) #smooth copy number
-  control.cn <- generateControlCopyNumberTemplate(tapestri.object, copy.number = 2)
-    control.cn["chr10q", "copy.number"] <- 3 
+    control.cn <- generateControlCopyNumberTemplate(tapestri.object.init, copy.number = 2, sample.feature.label = "dummy.val")
+    #control.cn["chr10q", "copy.number"] <- 3 
+    colData(tapestri.object.init)$dummy.feature <- "dummy.val"
+    
+    tapestri.object <- suppressMessages(calcSmoothCopyNumber(tapestri.object.init, 
+                                                             method = "weighted.median", 
+                                                             control.copy.number = control.cn, 
+                                                             sample.feature = "dummy.feature")) #smooth copy number
+
     tapestri.object <- suppressMessages(calcGMMCopyNumber(tapestri.object, cell.barcodes = colnames(tapestri.object), control.cn, model.components = 1:6))
     
     gmm.metrics <- calcTruePosRate(tapestri.object) %>% filter(cn.sim.class != "sim_cn6") %>% 

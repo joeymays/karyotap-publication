@@ -96,7 +96,7 @@ chr2.ds.actual <-
     ggplot(aes(x = sample.size, y = actual.sensitivity)) +
     geom_boxplot(outlier.size = 1) +
     theme_bw_custom +
-    labs(title = "Chr 2", y = "Sensitivity (%)", x = "Number of Probes") +
+    labs(title = "Chr 2", y = "Accuracy (%)", x = "Number of Probes") +
     scale_fill_viridis_d(alpha = 0.8)
 chr2.ds.actual
 ```

@@ -72,24 +72,6 @@ colData(exp1)$cluster <- fct_relevel(colData(exp1)$cluster , "RPE1")
 
 # Allele Freq UMAP
 
-## V1
-
-```{r}
-reducedDimPlot(exp1, dim.reduction = "umap", group.label = "cluster") +
-    theme(legend.position = "top", axis.text = element_blank(), axis.ticks = element_blank(), 
-          panel.grid = element_blank()) +
-    labs(title = "", x = "umap 1", y = "umap 2", fill = "", color = "")
-```
-
-```{r eval=FALSE}
-png(filename = here("figures", "figure-b", "exp01.af.umap.png"), 
-    width = 6, height = 4, units = "in", bg = "white", res = 300)
-last_plot()
-dev.off()
-```
-
-## V2
-
 ```{r}
 scatter.raw <- reducedDim(altExp(exp1.full, "alleleFrequency"), "UMAP")
 scatter.raw$cluster <- colData(exp1.full)$cluster
@@ -97,7 +79,6 @@ scatter.raw$cluster <- colData(exp1.full)$cluster
 
 ```{r}
 scatter.raw$cluster <- fct_collapse(scatter.raw$cluster, doublet = setdiff(levels(scatter.raw$cluster), 1:5))
-scatter.raw$cluster <- fct_recode(scatter.raw$cluster, LS513 = "1", RPE1 = "2", SW48 = "3", LoVo = "4", CL11 = "5")
 scatter.raw$cluster <- fct_relevel(scatter.raw$cluster, "RPE1") #Move RPE1 to first position in factor for plotting order.
 ```
 

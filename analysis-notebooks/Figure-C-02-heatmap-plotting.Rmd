@@ -1,0 +1,439 @@
+---
+title: "Figure C 2 - Heatmap Plotting"
+author: "Joey Mays"
+date: '2023-01-16'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+# Setup
+
+```{r message=FALSE}
+library(karyotapR)
+library(tidyverse)
+library(ggplot2)
+library(here)
+library(cowplot)
+library(ComplexHeatmap)
+```
+
+```{r}
+set.seed(20221210)
+```
+
+```{r}
+here::i_am("analysis-notebooks/Figure-C-02-heatmap-plotting.Rmd")
+```
+
+```{r}
+source(here("scripts", "gmm-calc-TPR.R"))
+```
+
+```{r}
+dir.create(here("figures", "figure-c"), showWarnings = F, recursive = T)
+fig.scalar = 1.375 #figure size scalar
+```
+
+# Load Data
+
+```{r}
+exp1 <- readRDS(file = here("datasets", "exp01.tapestriexperiment.RDS"))
+#exp1.full <- readRDS(file = here("datasets", "exp01.full.tapestriexperiment.RDS"))
+```
+
+Move RPE1 to first position in factor for plotting order.
+
+```{r}
+colData(exp1)$cluster <- fct_relevel(colData(exp1)$cluster , "RPE1")
+```
+
+```{r}
+bc.lut <- colData(exp1) %>% as_tibble() %>% select(cell.barcode, cluster)
+```
+
+# Whole Chromosome Heatmap
+
+```{r}
+row.annotation.data <- getTidyData(exp1, assay = "copyNumber") %>%
+      dplyr::select("cell.barcode", "cluster") %>%
+      dplyr::distinct() %>%
+      dplyr::pull(cluster) %>%
+      tibble::enframe(name = NULL, value = "cluster") %>%
+      as.data.frame()
+
+color.vector <- c("#785EF0", "#648FFF", "#DC267F", "#FE6100", "#FFB000")
+names(color.vector) <- c("RPE1", "LS513", "SW48", "LoVo", "CL11")
+color.list <- list(color.vector)
+names(color.list)[1] <- "cluster"
+row.annotation <- ComplexHeatmap::rowAnnotation(
+  df = row.annotation.data, col = color.list, border = TRUE, na_col = "white",
+  annotation_name_side = "top", annotation_name_gp = grid::gpar(fontsize = 0), show_legend = FALSE
+)
+```
+
+```{r}
+bottom.anno.scale <- c("1" = "#4C9940", "2" = "#ffffff", "3" = "#9D92EF", "4" = "#4C43C4")
+
+bottom.annotation <- ComplexHeatmap::columnAnnotation(WGS = c(1,2,3,4, rep(2,19)), 
+                                                      col = list(WGS = bottom.anno.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE)
+```
+
+### Pseudobulk
+
+```{r}
+pseudob.wc <- getTidyData(exp1, assay = "copyNumber") %>% group_by(feature.id, cluster, chr) %>% summarize(mean.cn = median(copyNumber), .groups = "drop") %>% group_by(cluster, chr) %>% summarize(median.cn = median(mean.cn), .groups = "drop") %>% pivot_wider(names_from = cluster, values_from = median.cn)
+
+pb.scale <- circlize::colorRamp2(c(1, 1.8, 2, 2.2, 3, 4),
+               c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c"))
+# pb.scale <- circlize::colorRamp2(c(1, 2, 3, 4), 
+#                 c("#2c7bb6", "#ffffff", "#fdae61", "#d7191c"))
+```
+
+```{r}
+exp1.wc.smoothcn.heatmap <- 
+    assayHeatmap(exp1, alt.exp = "smoothedCopyNumberByChr", assay = "smoothedCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 0, color.custom = circlize::colorRamp2(c(1, 1.5, 2, 2.5, 3, 4), c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c")), heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number", bottom_annotation = bottom.annotation)
+exp1.wc.smoothcn.heatmap
+```
+
+```{r}
+saveRDS(object = exp1.wc.smoothcn.heatmap, file = here("figures", "figure-c", "exp01.wc.smooth.heatmap.RDS"))
+```
+
+```{r}
+# Figure 2B
+pdf(file = here("figures", "figure-c", "exp01.wc.smooth.heatmap.pdf"), 
+    width = 8.53, height = 4)
+assayHeatmap(exp1, alt.exp = "smoothedCopyNumberByChr", assay = "smoothedCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", annotate.row.by = "cluster", column_title_rot = 0, color.custom = circlize::colorRamp2(c(1, 1.5, 2, 2.5, 3, 4), c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c")), heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number", bottom_annotation = bottom.annotation)
+dev.off()
+```
+
+```{r}
+wgs.tab <- read.table(here("datasets", "wgs-chr.txt"), sep = '\t', header = T)
+```
+
+```{r}
+exp1.1 <- exp1[,pull(filter(bc.lut, cluster == "RPE1"), cell.barcode)]
+exp1.1.hm <- assayHeatmap(exp1.1, alt.exp = "smoothedCopyNumberByChr", assay = "smoothedCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 0, color.custom = circlize::colorRamp2(c(1, 1.5, 2, 2.5, 3, 4), c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c")), heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number", raster_quality = 5, raster_by_magick = T)
+
+rpe1.wgs.anno <- ComplexHeatmap::columnAnnotation(WGS = wgs.tab$RPE1, 
+                                                      col = list(WGS = bottom.anno.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE,
+                                                  simple_anno_size = unit(3, "mm"), annotation_legend_param = list(labels = 1:4, at = 1:4))
+rpe1.pb.anno <- ComplexHeatmap::columnAnnotation(pb = pseudob.wc$RPE1, 
+                                                      col = list(pb = pb.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE,
+                                                  simple_anno_size = unit(3, "mm"))
+```
+
+```{r}
+exp1.2 <- exp1[,pull(filter(bc.lut, cluster == "LS513"), cell.barcode)]
+exp1.2.hm <- assayHeatmap(exp1.2, alt.exp = "smoothedCopyNumberByChr", assay = "smoothedCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 0, color.custom = circlize::colorRamp2(c(1, 1.5, 2, 2.5, 3, 4), c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c")), heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number", raster_quality = 5, raster_by_magick = T)
+
+ls513.wgs.anno <- ComplexHeatmap::columnAnnotation(WGS = wgs.tab$LS513, 
+                                                      col = list(WGS = bottom.anno.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE,
+                                                   simple_anno_size = unit(3, "mm"))
+ls513.pb.anno <- ComplexHeatmap::columnAnnotation(pb = pseudob.wc$LS513, 
+                                                      col = list(pb = pb.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE,
+                                                  simple_anno_size = unit(3, "mm"))
+```
+
+```{r}
+exp1.3 <- exp1[,pull(filter(bc.lut, cluster == "SW48"), cell.barcode)]
+exp1.3.hm <- assayHeatmap(exp1.3, alt.exp = "smoothedCopyNumberByChr", assay = "smoothedCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 0, color.custom = circlize::colorRamp2(c(1, 1.5, 2, 2.5, 3, 4), c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c")), heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number", raster_quality = 5, raster_by_magick = T)
+
+sw48.wgs.anno <- ComplexHeatmap::columnAnnotation(WGS = wgs.tab$SW48, 
+                                                      col = list(WGS = bottom.anno.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE,
+                                                  simple_anno_size = unit(3, "mm"))
+sw48.pb.anno <- ComplexHeatmap::columnAnnotation(pb = pseudob.wc$SW48, 
+                                                      col = list(pb = pb.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE,
+                                                  simple_anno_size = unit(3, "mm"))
+```
+
+```{r}
+exp1.4 <- exp1[,pull(filter(bc.lut, cluster == "LoVo"), cell.barcode)]
+exp1.4.hm <- assayHeatmap(exp1.4, alt.exp = "smoothedCopyNumberByChr", assay = "smoothedCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 0, color.custom = circlize::colorRamp2(c(1, 1.5, 2, 2.5, 3, 4), c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c")), heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number", raster_quality = 5, raster_by_magick = T)
+
+lovo.wgs.anno <- ComplexHeatmap::columnAnnotation(WGS = wgs.tab$LOVO, 
+                                                      col = list(WGS = bottom.anno.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE, 
+                                                  simple_anno_size = unit(3, "mm"))
+lovo.pb.anno <- ComplexHeatmap::columnAnnotation(pb = pseudob.wc$LoVo, 
+                                                      col = list(pb = pb.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE,
+                                                  simple_anno_size = unit(3, "mm"))
+```
+
+```{r}
+exp1.5 <- exp1[,pull(filter(bc.lut, cluster == "CL11"), cell.barcode)]
+exp1.5.hm <- assayHeatmap(exp1.5, alt.exp = "smoothedCopyNumberByChr", assay = "smoothedCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 0, color.custom = circlize::colorRamp2(c(1, 1.5, 2, 2.5, 3, 4), c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c")), heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number", raster_quality = 5, raster_by_magick = T)
+
+cl11.wgs.anno <- ComplexHeatmap::columnAnnotation(WGS = wgs.tab$CL11, 
+                                                      col = list(WGS = bottom.anno.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE, 
+                                                  simple_anno_size = unit(3, "mm"))
+cl11.pb.anno <- ComplexHeatmap::columnAnnotation(pb = pseudob.wc$CL11, 
+                                                      col = list(pb = pb.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE,
+                                                  simple_anno_size = unit(3, "mm"))
+```
+
+```{r}
+ht.list <- exp1.1.hm %v% rpe1.pb.anno %v% rpe1.wgs.anno %v%
+exp1.2.hm %v% ls513.pb.anno %v% ls513.wgs.anno %v% 
+exp1.3.hm %v% sw48.pb.anno %v% sw48.wgs.anno %v% 
+exp1.4.hm %v% lovo.pb.anno %v% lovo.wgs.anno %v% 
+exp1.5.hm %v% cl11.pb.anno %v% cl11.wgs.anno
+draw(ht.list, ht_gap = unit(c(1,1,4,1,1,4,1,1,4,1,1,4,1,1), "mm"))
+```
+
+```{r}
+pdf(file = here("figures", "figure-c", "exp01.wc.smooth.heatmap.pb.pdf"), 
+    width = 7.90, height = 3.75)
+draw(ht.list, ht_gap = unit(c(1,1,4,1,1,4,1,1,4,1,1,4,1,1), "mm"))
+dev.off()
+```
+
+```{r}
+ht.list.hm <- exp1.1.hm %v% exp1.2.hm %v% exp1.3.hm %v% exp1.4.hm %v% exp1.5.hm 
+draw(ht.list.hm, ht_gap = unit(c(12, 12, 12, 12), "mm"))
+```
+
+```{r}
+pdf(file = here("figures", "figure-c", "exp01.wc.smooth.heatmap.spaced.pdf"), 
+    width = 7.90, height = 3.75)
+draw(ht.list.hm, ht_gap = unit(c(12, 12, 12, 12), "mm"), use_raster = T, raster_quality = 7)
+dev.off()
+```
+
+### GMM Heatmap
+
+```{r}
+gmm.anno.scale <- c("1" = "#2c7bb6", "2" = "#ffffff", "3" = "#fdae61", "4" = "#d7191c", "5" = "#d7191c", "6" = "#d7191c")
+```
+
+```{r}
+exp1.wc.gmm.heatmap <- 
+    assayHeatmap(exp1, alt.exp = "smoothedCopyNumberByChr", assay = "gmmCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 0, color.custom = gmm.anno.scale, heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number")
+exp1.wc.gmm.heatmap
+```
+
+```{r}
+pdf(file = here("figures", "figure-c", "exp01.wc.gmm.heatmap.pdf"), 
+    width = 4.2, height = 2.6)
+draw(exp1.wc.gmm.heatmap, use_raster = T, raster_quality = 7)
+dev.off()
+```
+
+
+### Raw Matrix
+
+```{r}
+raw.ploidy.wc <- round(t(assay(altExp(exp1, "smoothedCopyNumberByChr"), "smoothedCopyNumber")), 3)
+colnames(raw.ploidy.wc) <- paste0("chr", colnames(raw.ploidy.wc))
+raw.ploidy.wc <- cbind(colData(exp1)[,"cluster", drop = F], raw.ploidy.wc) 
+raw.ploidy.wc <- raw.ploidy.wc %>% as.data.frame() %>% rownames_to_column("cell.barcode")
+```
+
+```{r}
+write.csv(x = raw.ploidy.wc, file = here("figures", "figure-c", "exp01.wc.smooth.heatmap.raw.csv"), 
+          quote = F, row.names = F)
+```
+
+# Chromosome Arms Heatmap
+
+```{r}
+bottom.anno.scale <- c("1" = "#4C9940", "2" = "#ffffff", "3" = "#9D92EF", "4" = "#4C43C4")
+
+bottom.annotation.arm <- ComplexHeatmap::columnAnnotation(WGS = c(1,2,3,4, rep(2,37)), 
+                                                      col = list(WGS = bottom.anno.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE)
+```
+
+```{r}
+exp1.arm.smoothcn.heatmap <- 
+assayHeatmap(exp1, alt.exp = "smoothedCopyNumberByArm", assay = "smoothedCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", color.custom = circlize::colorRamp2(c(1, 1.5, 2, 2.5, 3, 4), c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c")), heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number", bottom_annotation = bottom.annotation.arm)
+exp1.arm.smoothcn.heatmap
+```
+```{r}
+saveRDS(object = exp1.arm.smoothcn.heatmap, file = here("figures", "figure-c", "exp01.arm.smooth.heatmap.RDS"))
+```
+
+```{r}
+pdf(file = here("figures", "figure-c", "exp01.arm.smooth.heatmap.pdf"), 
+    width = 8.53, height = 4)
+assayHeatmap(exp1, alt.exp = "smoothedCopyNumberByArm", assay = "smoothedCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", color.custom = circlize::colorRamp2(c(1, 1.5, 2, 2.5, 3, 4), c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c")), heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number", bottom_annotation = bottom.annotation.arm)
+dev.off()
+```
+
+### Pseudobulk
+
+```{r}
+pseudob.arm <- getTidyData(exp1, assay = "copyNumber") %>% group_by(feature.id, cluster, arm) %>% summarize(mean.cn = median(copyNumber), .groups = "drop") %>% group_by(cluster, arm) %>% summarize(median.cn = median(mean.cn), .groups = "drop") %>% pivot_wider(names_from = cluster, values_from = median.cn)
+
+pb.scale <- circlize::colorRamp2(c(1, 1.8, 2, 2.2, 3, 4),
+               c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c"))
+# pb.scale <- circlize::colorRamp2(c(1, 2, 3, 4), 
+#                 c("#2c7bb6", "#ffffff", "#fdae61", "#d7191c"))
+```
+
+```{r}
+wgs.tab.arm <- read.table(here("datasets", "wgs-arm.txt"), sep = '\t', header = T)
+```
+
+```{r}
+exp1.arm.1.hm <- assayHeatmap(exp1.1, alt.exp = "smoothedCopyNumberByArm", assay = "smoothedCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 90, color.custom = circlize::colorRamp2(c(1, 1.5, 2, 2.5, 3, 4), c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c")), heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number")
+
+rpe1.wgs.arm.anno <- ComplexHeatmap::columnAnnotation(WGS = wgs.tab.arm$RPE1, 
+                                                      col = list(WGS = bottom.anno.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE,
+                                                  simple_anno_size = unit(3, "mm"), annotation_legend_param = list(labels = 1:4, at = 1:4))
+rpe1.pb.arm.anno <- ComplexHeatmap::columnAnnotation(pb = pseudob.arm$RPE1, 
+                                                      col = list(pb = pb.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE,
+                                                  simple_anno_size = unit(3, "mm"))
+```
+
+```{r}
+exp1.arm.2.hm <- assayHeatmap(exp1.2, alt.exp = "smoothedCopyNumberByArm", assay = "smoothedCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 90, color.custom = circlize::colorRamp2(c(1, 1.5, 2, 2.5, 3, 4), c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c")), heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number")
+
+ls513.wgs.arm.anno <- ComplexHeatmap::columnAnnotation(WGS = wgs.tab.arm$LS513, 
+                                                      col = list(WGS = bottom.anno.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE,
+                                                   simple_anno_size = unit(3, "mm"))
+ls513.pb.arm.anno <- ComplexHeatmap::columnAnnotation(pb = pseudob.arm$LS513, 
+                                                      col = list(pb = pb.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE,
+                                                  simple_anno_size = unit(3, "mm"))
+```
+
+```{r}
+exp1.arm.3.hm <- assayHeatmap(exp1.3, alt.exp = "smoothedCopyNumberByArm", assay = "smoothedCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 90, color.custom = circlize::colorRamp2(c(1, 1.5, 2, 2.5, 3, 4), c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c")), heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number")
+
+sw48.wgs.arm.anno <- ComplexHeatmap::columnAnnotation(WGS = wgs.tab.arm$SW48, 
+                                                      col = list(WGS = bottom.anno.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE,
+                                                  simple_anno_size = unit(3, "mm"))
+sw48.pb.arm.anno <- ComplexHeatmap::columnAnnotation(pb = pseudob.arm$SW48, 
+                                                      col = list(pb = pb.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE,
+                                                  simple_anno_size = unit(3, "mm"))
+```
+
+```{r}
+exp1.arm.4.hm <- assayHeatmap(exp1.4, alt.exp = "smoothedCopyNumberByArm", assay = "smoothedCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 90, color.custom = circlize::colorRamp2(c(1, 1.5, 2, 2.5, 3, 4), c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c")), heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number")
+
+lovo.wgs.arm.anno <- ComplexHeatmap::columnAnnotation(WGS = wgs.tab.arm$LOVO, 
+                                                      col = list(WGS = bottom.anno.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE, 
+                                                  simple_anno_size = unit(3, "mm"))
+lovo.pb.arm.anno <- ComplexHeatmap::columnAnnotation(pb = pseudob.arm$LoVo, 
+                                                      col = list(pb = pb.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE,
+                                                  simple_anno_size = unit(3, "mm"))
+```
+
+```{r}
+exp1.arm.5.hm <- assayHeatmap(exp1.5, alt.exp = "smoothedCopyNumberByArm", assay = "smoothedCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 90, color.custom = circlize::colorRamp2(c(1, 1.5, 2, 2.5, 3, 4), c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c")), heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number")
+
+cl11.wgs.arm.anno <- ComplexHeatmap::columnAnnotation(WGS = wgs.tab.arm$CL11, 
+                                                      col = list(WGS = bottom.anno.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE, 
+                                                  simple_anno_size = unit(3, "mm"))
+cl11.pb.arm.anno <- ComplexHeatmap::columnAnnotation(pb = pseudob.arm$CL11, 
+                                                      col = list(pb = pb.scale),  annotation_name_side = "left", 
+                                                      annotation_name_gp = grid::gpar(fontsize = 0), border = TRUE,
+                                                  simple_anno_size = unit(3, "mm"))
+```
+
+```{r}
+ht.list.arm <- exp1.arm.1.hm %v% rpe1.pb.arm.anno %v% rpe1.wgs.arm.anno %v%
+exp1.arm.2.hm %v% ls513.pb.arm.anno %v% ls513.wgs.arm.anno %v% 
+exp1.arm.3.hm %v% sw48.pb.arm.anno %v% sw48.wgs.arm.anno %v% 
+exp1.arm.4.hm %v% lovo.pb.arm.anno %v% lovo.wgs.arm.anno %v% 
+exp1.arm.5.hm %v% cl11.pb.arm.anno %v% cl11.wgs.arm.anno
+draw(ht.list.arm, ht_gap = unit(c(1,1,4,1,1,4,1,1,4,1,1,4,1,1), "mm"))
+```
+
+```{r}
+pdf(file = here("figures", "figure-c", "exp01.arm.smooth.heatmap.pb.pdf"), 
+    width = 7.90, height = 3.75)
+draw(ht.list.arm, ht_gap = unit(c(1,1,4,1,1,4,1,1,4,1,1,4,1,1), "mm"))
+dev.off()
+```
+
+```{r}
+ht.arm.list.hm <- exp1.arm.1.hm %v% exp1.arm.2.hm %v% exp1.arm.3.hm %v% exp1.arm.4.hm %v% exp1.arm.5.hm 
+draw(ht.arm.list.hm, ht_gap = unit(c(12, 12, 12, 12), "mm"))
+```
+
+```{r}
+pdf(file = here("figures", "figure-c", "exp01.arm.smooth.heatmap.spaced.pdf"), 
+    width = 7.90, height = 3.75)
+draw(ht.arm.list.hm, ht_gap = unit(c(12, 12, 12, 12), "mm"), use_raster = T, raster_quality = 7)
+dev.off()
+```
+
+### GMM Heatmap
+
+```{r}
+gmm.anno.scale <- c("1" = "#2c7bb6", "2" = "#ffffff", "3" = "#fdae61", "4" = "#d7191c", "5" = "#d7191c", "6" = "#d7191c")
+```
+
+```{r}
+exp1.arm.gmm.heatmap <- 
+    assayHeatmap(exp1, alt.exp = "smoothedCopyNumberByArm", assay = "gmmCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 90, color.custom = gmm.anno.scale, heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number")
+exp1.arm.gmm.heatmap
+```
+
+```{r}
+pdf(file = here("figures", "figure-c", "exp01.arm.gmm.heatmap.pdf"), 
+    width = 7.90, height = 2.75)
+draw(exp1.arm.gmm.heatmap, use_raster = T, raster_quality = 7)
+dev.off()
+```
+
+### Raw Matrix
+
+```{r}
+raw.ploidy.arm <- round(t(assay(altExp(exp1, "smoothedCopyNumberByArm"), "smoothedCopyNumber")), 3)
+raw.ploidy.arm <- cbind(colData(exp1)[,"cluster", drop = F], raw.ploidy.arm) 
+raw.ploidy.arm <- raw.ploidy.arm %>% as.data.frame() %>% rownames_to_column("cell.barcode")
+```
+
+```{r}
+write.csv(x = raw.ploidy.arm, file = here("figures", "figure-c", "exp01.arm.smooth.heatmap.raw.csv"), 
+          quote = F, row.names = F)
+```
+
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```
