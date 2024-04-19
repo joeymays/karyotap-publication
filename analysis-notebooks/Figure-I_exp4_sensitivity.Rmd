@@ -36,6 +36,7 @@ library(here)
 library(cowplot)
 library(ggrastr)
 library(tidyverse)
+library(ComplexHeatmap)
 ```
 
 ```{r}
@@ -303,7 +304,7 @@ rpe1.data.results %>%
     geom_col(color = "black", fill = "#C6DEA6", width = .75) +
     coord_cartesian(ylim = c(0,100)) +
     scale_y_continuous(expand = c(0,0,0,5), breaks = seq(0,100,20)) +
-    labs(y = "Sensitivity (%)", x = "Chromosome") +
+    labs(y = "Accuracy (%)", x = "Chromosome") +
     geom_text(aes(label=round(pct.concordance,0)), vjust = -1, size = 7/.pt) +
     theme_bw_custom +
     theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank(), panel.border = element_blank(), axis.line = element_line()) +
@@ -350,7 +351,7 @@ ggplot(combined.results, aes(x = feature.id, y = delta.acc)) +
     geom_col(fill = "#C6DEA6", color = "black", width = .75) +
     theme_bw_custom +
     theme(panel.border = element_blank(), axis.line = element_line(), panel.grid.minor.y = element_blank()) +
-    labs(x = "Chromosome", y = "\u0394 Sensitivity (pp)") +
+    labs(x = "Chromosome", y = "\u0394 Accuracy (pp)") +
     scale_y_continuous(limits = c(-10, 30), expand = c(0,0,0,0)) +
     geom_text(aes(y = 28, label = sprintf("%+2d", combined.results$delta.probes)), size = 7/.pt) +
     geom_hline(yintercept = 0)
@@ -373,7 +374,7 @@ ggplot(combined.results, aes(x = delta.probes, y = delta.acc)) +
     geom_point(alpha = 0.5, size = 2) + 
     theme_bw_custom + 
     theme(panel.border = element_blank(), axis.line = element_line(), panel.grid.minor.y = element_blank()) +
-    labs(x = "\u0394 Probe Number", y = "\u0394 Sensitivity (pp)") +
+    labs(x = "\u0394 Probe Number", y = "\u0394 Accuracy (pp)") +
     scale_x_continuous(breaks = seq(-6, 8, 2)) +
     scale_y_continuous(limits = c(-10, 30), expand = c(0,0,0,0)) +
     annotate("text", x = -5, y = 28, size = 7/.pt, hjust = 0, label = paste0("Pearson r = ", round(change.cor, 2))) +
@@ -414,7 +415,7 @@ ggplot(exp4.gmm.metrics, aes(x = feature.id, y = true.pos.p)) +
     theme(legend.position = "none", panel.grid.major = element_line(), 
           strip.background = element_blank()) +
     scale_fill_manual(values = c("#785EF0", "#648FFF", "#DC267F", "#FE6100", "#FFB000")) +
-    labs(x = "Chromosome", y = "Theoretical Sensitivity (%)") +
+    labs(x = "Chromosome", y = "Simulated Sensitivity (%)") +
     scale_y_continuous(breaks = c(0, 50, 100), expand = c(0,0,0,10)) +
     geom_hline(yintercept = 0) +
     geom_text(aes(label=round(true.pos.p,0)), vjust = -1, size = 6/.pt, angle = 45, hjust = 0)
@@ -437,7 +438,7 @@ ggplot(exp4.gmm.metrics, aes(x=n.probes, y=true.pos.p, color = cn.sim.class)) +
     geom_smooth(data = rpe1.data.results, aes(x=n.probes, y=pct.concordance), 
                 color = "black", inherit.aes = F, se = F, span = 1, linetype = "dashed") +
     scale_color_manual(values = viridisLite::viridis(n=5), labels = 1:5) +
-    labs(x = "Number of Probes", y = "Theoretical Sensitivity (%)", color = "Copy Number") +
+    labs(x = "Number of Probes", y = "Simulated Sensitivity (%)", color = "Copy Number") +
     scale_x_continuous(limits = c(11,22), breaks = seq(12,22,2))
 tpr.wc.nprobes
 ```
@@ -466,7 +467,7 @@ tpr.wc.bars.compare <-
     theme(legend.position = "none", panel.grid.major = element_line(), 
           strip.background = element_blank()) +
     scale_fill_viridis_d() +
-    labs(x = "Chromosome", y = "Theoretical Sensitivity (%)") +
+    labs(x = "Chromosome", y = "Simulated Sensitivity (%)") +
     scale_y_continuous(limits = c(-10, 30), breaks = c(-10, 0, 10, 20, 30), expand = c(0,0,0,10)) +
     geom_text(aes(y = 30, label = sprintf("%+2d",delta.probes)), size = 3)
 tpr.wc.bars.compare
@@ -479,7 +480,7 @@ ggplot(sensitivity.compare, aes(x=feature.id, y=delta.tpr, color = cn.sim.class)
     theme_bw_custom +
     theme(legend.position = "top") +
     scale_color_viridis_d(labels = 1:5) +
-    labs(y = "\u0394 Theoretical Sensitivity (pp)", x = "Chromosome", color = "Copy Number")
+    labs(y = "\u0394 Simualted Sensitivity (pp)", x = "Chromosome", color = "Copy Number")
 tpr.wc.dots.compare
 ```
 
@@ -491,7 +492,7 @@ ggplot(sensitivity.compare, aes(x=delta.probes, y=delta.tpr, color = cn.sim.clas
     theme_bw() +
     theme(legend.position = "top") +
     scale_color_viridis_d(labels = 1:5) +
-    labs(y = "\u0394 Theoretical Sensitivity (pp)", x = "\u0394 Number of Probes", color = "Copy Number") +
+    labs(y = "\u0394 Simualted Sensitivity (pp)", x = "\u0394 Number of Probes", color = "Copy Number") +
     scale_x_continuous(limits = c(-6, 8), breaks = seq(-6, 8, 2))
 tpr.wc.nprobes.compare
 ```
@@ -513,7 +514,7 @@ ggplot(sensitivity.compare.avg, aes(x = mean.tpr1, y = mean.tpr4, color = cn.sim
     geom_text(nudge_x = -4, nudge_y = 1, size = 6/.pt, color = "black") +
     guides(color = "none") + 
     scale_color_manual(values = c("#785EF0", "#648FFF", "#DC267F", "#FE6100", "#FFB000")) +
-    labs(x = "Panel Version 1\nMean Theoretical Sensitivity (%)", y = "Panel Version 2\nMean Theoretical Sensitivity (%)")
+    labs(x = "Panel Version 1\nMean Simulated Sensitivity (%)", y = "Panel Version 2\nMean Simulated Sensitivity (%)")
 sensitivity.compare.plot
 ``` 
 
@@ -529,23 +530,23 @@ there are no true negatives or false positives for CN = 2
 
 
 ```{r}
-exp1.gmm.specificity <- calcTrueNegRate(exp1) %>% mutate(tnr = tnr * 100) %>% filter(cn.sim.class != "sim_cn6")
-exp1.gmm.specificity <- exp1.gmm.specificity %>% left_join(n.probes, by = "feature.id")
+exp4.gmm.specificity <- calcTrueNegRate(exp4) %>% mutate(tnr = tnr * 100) %>% filter(cn.sim.class != "sim_cn6")
+exp4.gmm.specificity <- exp4.gmm.specificity %>% left_join(n.probes, by = "feature.id")
 
-ggplot(exp1.gmm.specificity, aes(x = feature.id, y = tnr)) +
+ggplot(exp4.gmm.specificity, aes(x = feature.id, y = tnr)) +
     geom_col(aes(fill = cn.sim.class), color = "black", width = 0.85) +
     facet_wrap(cn.sim.class ~., ncol = 1) +
     theme_classic_custom +
     theme(legend.position = "none", panel.grid.major.y = element_line(), 
           strip.background = element_blank()) +
     scale_fill_manual(values = c("#785EF0", "#648FFF", "#DC267F", "#FE6100", "#FFB000")) +
-    labs(x = "Chromosome", y = "Theoretical Specificity (%)") +
+    labs(x = "Chromosome", y = "Simulated Specificity (%)") +
     scale_y_continuous(breaks = c(0, 50, 100), expand = c(0,0,0,25)) +
     geom_text(aes(label=round(tnr,0)), vjust = -1, size = 6/.pt)
 ```
 
 ```{r}
-ggplot(exp1.gmm.specificity, aes(x=n.probes, y=tnr, color = cn.sim.class)) +
+ggplot(exp4.gmm.specificity, aes(x=n.probes, y=tnr, color = cn.sim.class)) +
     geom_point(alpha = 0.5, position = position_jitter(width = 0.25)) + 
     theme_classic_custom +
     theme(legend.position = "top", panel.grid.major = element_line()) +
@@ -595,7 +596,7 @@ cv.results %>%
     geom_point(data = rpe1.data.results, aes(x=feature.id, y=pct.concordance), inherit.aes = F, pch = 4, color = "red", position = position_nudge(x=0.3)) +
     theme_bw_custom +
     scale_y_continuous(limits = c(34, 100)) +
-    labs(y = "Sensitivity (%)", x = "Chromosome")
+    labs(y = "Accuracy (%)", x = "Chromosome")
 ```
 
 ```{r}
@@ -606,7 +607,7 @@ cv.results %>% group_by(feature.id) %>% summarize(mean.pct = mean(pct.concordanc
     theme_classic_custom + 
     theme(panel.grid.major = element_line()) +
     scale_y_continuous(limits = c(50, 100), expand = c(0,0,0,0)) +
-    labs(y = "Sensitivity (%)", x = "Chromosome") + 
+    labs(y = "Accuracy (%)", x = "Chromosome") + 
     geom_hline(yintercept = mean(cv.results$pct.concordance), linetype = "dashed", alpha = 0.7) +
     annotate("text", x = 21, y = 95, size = 7/.pt, label = paste0("avg: ", round(mean(cv.results$pct.concordance), 0), "%"))
 wc.sensitivity.mad
@@ -639,7 +640,7 @@ ggplot(exp4.gmm.metrics.3, aes(x = feature.id, y = true.pos.p)) +
     theme(legend.position = "none", panel.grid.major.y = element_line(), 
           strip.background = element_blank()) +
     scale_fill_manual(values = c("#785EF0", "#648FFF", "#DC267F")) +
-    labs(x = "Chromosome", y = "Theoretical Sensitivity (%)") +
+    labs(x = "Chromosome", y = "Simulated Sensitivity (%)") +
     scale_y_continuous(breaks = c(0, 50, 100), expand = c(0,0,0,0)) +
     geom_text(aes(label=round(true.pos.p,0)), vjust = -1, size = 6/.pt) +
     geom_text(data = exp4.gmm.metrics.3.avg, aes(label = glue::glue("avg: {round(mean.tpr, 0)}%"), x = 22, y = 140), size = 6/.pt, inherit.aes = F)
@@ -660,7 +661,7 @@ ggplot(exp4.gmm.metrics.3, aes(x=n.probes, y=true.pos.p, color = cn.sim.class)) 
     geom_smooth(data = rpe1.data.results, aes(x=n.probes, y=pct.concordance), linewidth = 0.75,
                 color = "black", inherit.aes = F, se = F, span = 1, linetype = "dashed", alpha = 0.5) +
     scale_color_manual(values = c("#785EF0", "#648FFF", "#DC267F"), labels = 1:3) +
-    labs(x = "Number of Probes", y = "Theoretical Sensitivity (%)", color = "Copy Number") +
+    labs(x = "Number of Probes", y = "Simulated Sensitivity (%)", color = "Copy Number") +
     scale_x_continuous(limits = c(10,24), breaks = seq(4,24,2)) +
     scale_y_continuous(limits = c(70, 101), expand = c(0,0,0,2))
 ```
@@ -676,7 +677,7 @@ ggplot(exp4.gmm.metrics.3.spec, aes(x = feature.id, y = tnr)) +
     theme(legend.position = "none", panel.grid.major.y = element_line(), 
           strip.background = element_blank()) +
     scale_fill_manual(values = c("#785EF0", "#648FFF", "#DC267F")) +
-    labs(x = "Chromosome", y = "Theoretical Specificity (%)") +
+    labs(x = "Chromosome", y = "Simulated Specificity (%)") +
     scale_y_continuous(breaks = c(0, 50, 100), expand = c(0,0,0,25)) +
     geom_text(aes(label=round(tnr,0)), vjust = -1, size = 6/.pt)
 ```
@@ -689,7 +690,7 @@ ggplot(exp4.gmm.metrics.3.spec, aes(x=n.probes, y=tnr, color = cn.sim.class)) +
     theme(legend.box.margin = margin(0, 10, 0, 10), legend.margin = margin(0), plot.margin = unit(c(0, 5.5, 5.5, 5.5), "pt")) +
     geom_smooth(se = F, span = 1, linewidth = 0.75) +
     scale_color_manual(values = c("#785EF0", "#648FFF", "#DC267F"), labels = 1:5) +
-    labs(x = "Number of Probes", y = "Theoretical Specificity (%)", color = "Copy Number") +
+    labs(x = "Number of Probes", y = "Simulated Specificity (%)", color = "Copy Number") +
     scale_x_continuous(limits = c(10,23), breaks = seq(4,24,2)) +
     scale_y_continuous(limits = c(80, 100), expand = c(0,0,0,1))
 ```
@@ -722,7 +723,7 @@ rpe1.data.arm.results %>%
     geom_col(color = "black", fill = "#7EBDC3", width = 0.75) +
     coord_cartesian(ylim = c(0,100)) +
     scale_y_continuous(expand = c(0,0), breaks = seq(0,100,20)) +
-    labs(y = "Sensitivity (%)", x = "Chromosome Arm") +
+    labs(y = "Accuracy (%)", x = "Chromosome Arm") +
     geom_text(aes(label=round(pct.concordance,0)), vjust = -1, size = 6/.pt) +
     theme_bw_custom +
     theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank(), axis.text.x = element_text(hjust = 1, angle = 45), axis.line = element_line(), panel.border = element_blank()) +
@@ -754,7 +755,7 @@ combined.arm.results <- rpe1.data.arm.results %>% inner_join(exp1.arm.results %>
 
 ```{r}
 combined.arm.results <- combined.arm.results %>% mutate(delta.acc = pct.concordance.v3 - pct.concordance.v1, 
-                            delta.probes = n.probes.v3 - n.probes.v1)
+                            delta.probes = n.probes.v3 - n.probes.v1) %>% mutate(feature.label = str_sub(feature.id, 4,-1))
 ```
 
 ```{r}
@@ -763,9 +764,9 @@ ggplot(combined.arm.results, aes(x = feature.id, y = delta.acc)) +
     geom_col(fill = "#7EBDC3", color = "black", width = .75) +
     theme_bw_custom +
     theme(axis.text.x = element_text(hjust = 1, angle = 45), panel.border = element_blank(), axis.line = element_line(), panel.grid.minor.y = element_blank()) + 
-    labs(x = "Chromosome Arm", y = "\u0394 Sensitivity (pp)") +
+    labs(x = "Chromosome Arm", y = "\u0394 Accuracy (pp)") +
     scale_y_continuous(limits = c(-15, 30), expand = c(0,0,0,0)) +
-    geom_text(aes(y = 28, label = sprintf("%+2d", combined.arm.results$delta.probes)), size = 6/.pt) +
+    geom_text(aes(y = 28, label = sprintf("%+2d", delta.probes)), size = 6/.pt) +
     geom_hline(yintercept = 0) +
     scale_x_discrete(labels = combined.arm.results$feature.label)
 rpe1.arm.sensitivity.change
@@ -824,7 +825,7 @@ ggplot(exp4.gmm.metrics.arms, aes(x = feature.id, y = true.pos.p)) +
           strip.background = element_blank(), 
           axis.text.x = element_text(angle = 45, hjust=1)) +
     scale_fill_manual(values = c("#785EF0", "#648FFF", "#DC267F", "#FE6100", "#FFB000")) +
-    labs(x = "Chromosome Arm", y = "Theoretical Sensitivity (%)") +
+    labs(x = "Chromosome Arm", y = "Simulated Sensitivity (%)") +
     scale_y_continuous(breaks = c(0, 50, 100), expand = c(0,0,0,10)) +
     scale_x_discrete(labels = rpe1.data.arm.results$feature.label) +
     geom_hline(yintercept = 0) +
@@ -847,7 +848,7 @@ tpr.arm.nprobes <-
     geom_smooth(data = rpe1.data.arm.results, aes(x=n.probes, y=pct.concordance), 
                 color = "black", inherit.aes = F, se = F, span = 1, linetype = "dashed") +
     scale_color_manual(values = viridisLite::viridis(n=5), labels = 1:5) +
-    labs(x = "Number of Probes", y = "Theoretical Sensitivity (%)", color = "Copy Number") +
+    labs(x = "Number of Probes", y = "Simulated Sensitivity (%)", color = "Copy Number") +
     scale_x_continuous(limits = c(4,14), breaks = seq(4,14,2))
 tpr.arm.nprobes
 ```
@@ -869,7 +870,7 @@ tpr.arms.bars.compare <-
     theme(legend.position = "none", panel.grid.major = element_line(), 
           strip.background = element_blank(), axis.text.x = element_text(angle = 45, hjust = 1)) +
     scale_fill_viridis_d() +
-    labs(x = "Chromosome Arm", y = "\u0394 Theoretical Sensitivity (pp)") +
+    labs(x = "Chromosome Arm", y = "\u0394 Simulated Sensitivity (pp)") +
     scale_y_continuous(limits = c(-10, 30), breaks = c(-10, 0, 10, 20, 30), expand = c(0,0,0,10)) +
     geom_text(aes(y = 30, label = sprintf("%+2d", delta.probes)), size = 6/.pt)
 tpr.arms.bars.compare
@@ -882,7 +883,7 @@ ggplot(sensitivity.compare.arms, aes(x=feature.id, y=delta.tpr, color = cn.sim.c
     theme_bw() +
     theme(legend.position = "top", axis.text.x = element_text(angle = 45, hjust = 1)) +
     scale_color_viridis_d(labels = 1:5) +
-    labs(y = "\u0394 Theoretical Sensitivity (pp)", x = "Chromosome Arm", color = "Copy Number")
+    labs(y = "\u0394 Simulated Sensitivity (pp)", x = "Chromosome Arm", color = "Copy Number")
 tpr.arms.dots.compare
 ```
 
@@ -894,7 +895,7 @@ ggplot(sensitivity.compare.arms, aes(x=delta.probes, y=delta.tpr, color = cn.sim
     theme_bw() +
     theme(legend.position = "top") +
     scale_color_viridis_d(labels = 1:5) +
-    labs(y = "\u0394 Theoretical Sensitivity (pp)", x = "\u0394 Number of Probes", color = "Copy Number") +
+    labs(y = "\u0394 Simulated Sensitivity (pp)", x = "\u0394 Number of Probes", color = "Copy Number") +
     scale_x_continuous(limits = c(-3, 7), breaks = c(-3, 0, 3, 6))
 tpr.arms.nprobes.compare
 ```
@@ -916,7 +917,7 @@ ggplot(sensitivity.compare.avg.arms, aes(x = mean.tpr1, y = mean.tpr4, color = c
     geom_text(nudge_x = -3, nudge_y = 2, size = 6/.pt, color = "black") +
     guides(color = "none") + 
     scale_color_manual(values = c("#785EF0", "#648FFF", "#DC267F", "#FE6100", "#FFB000")) +
-    labs(x = "Panel Version 1\nMean Theoretical Sensitivity (%)", y = "Panel Version 2\nMean Theoretical Sensitivity (%)")
+    labs(x = "Panel Version 1\nMean Simulated Sensitivity (%)", y = "Panel Version 2\nMean Simulated Sensitivity (%)")
 sensitivity.compare.plot.arms
 ``` 
 
@@ -955,7 +956,7 @@ cv.results.arms %>%
     geom_point(data = rpe1.data.arm.results, aes(x=feature.id, y=pct.concordance), inherit.aes = F, pch = 4, color = "red", position = position_nudge(x=0.3)) +
     theme_bw_custom +
     scale_y_continuous(limits = c(34, 100)) +
-    labs(y = "Sensitivity (%)", x = "Chromosome") +
+    labs(y = "Accuracy (%)", x = "Chromosome") +
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
     scale_x_discrete(labels = cv.results.arms$feature.label)
 ```
@@ -969,7 +970,7 @@ cv.results.arms %>% group_by(feature.id, feature.label) %>% summarize(mean.pct =
     theme(panel.grid.major = element_line(), axis.text.x = element_text(angle = 45, hjust = 1)) +
     scale_y_continuous(limits = c(50, 100), expand = c(0,0,0,0), breaks = seq(50, 100, 10)) +
     scale_x_discrete(labels = cv.results.arms$feature.label) +
-    labs(y = "Sensitivity (%)", x = "Chromosome Arm") + 
+    labs(y = "Accuracy (%)", x = "Chromosome Arm") + 
     geom_hline(yintercept = mean(cv.results.arms$pct.concordance), linetype = "dashed", alpha = 0.7) +
     annotate("text", x = 40, y = 95, size = 7/.pt, label = paste0("avg: ", round(mean(cv.results.arms$pct.concordance), 0), "%"))
 arm.sensitivity.mad

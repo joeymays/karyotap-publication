@@ -34,6 +34,7 @@ library(tidyverse)
 library(here)
 library(ggplotify)
 library(cowplot)
+library(ggdist)
 ```
 
 ```{r}
@@ -46,7 +47,7 @@ fig.scalar = 1.375 #figure size scalar
 ```
 
 ```{r}
-wc.hm <- readRDS(here("figures", "figure-c", "exp01.wc.smooth.heatmap.RDS"))
+#wc.hm <- readRDS(here("figures", "figure-c", "exp01.wc.smooth.heatmap.pb.RDS"))
 wc.sens <- readRDS(here("figures", "figure-c", "exp01.rpe1.accuracy.wc.RDS"))
 wc.sens.nprobes <- readRDS(here("figures", "figure-c", "exp01.rpe1.accuracy.wc.regression.RDS"))
 wc.theoretical.tpr <- readRDS(here("figures", "figure-c", "exp01.wc.theoretical.tpr.RDS"))
@@ -62,9 +63,10 @@ plot.placeholder.white <- ggplot() + geom_blank() + theme(panel.background = ele
 ```{r}
 p2 <- plot_grid(plotlist = list(gmm.example, wc.sens.mad), ncol = 2, labels = c("B.", "C."), label_size = 12, scale = 0.95)
 p3 <- plot_grid(plotlist = list(wc.sens.nprobes, wc.theoretical.tpr), ncol = 2, labels = c("D.", "E."), label_size = 12, scale = 0.95)
-p4 <- plot_grid(plotlist = list(as.ggplot(wc.hm), p2, p3), ncol = 1, rel_heights = c(2, 1, 1), labels = c("A."), label_size = 12, scale = c(0.95, 1, 1))
+p4 <- plot_grid(plotlist = list(plot.placeholder, p2, p3), ncol = 1, rel_heights = c(2, 1, 1), labels = c("A."), label_size = 12, scale = c(0.95, 1, 1))
 
-cowplot::plot_grid(plotlist = list(plot.placeholder.white , p4), labels = "Figure 2", label_size = 12, ncol = 1, rel_heights = c(1,40), hjust = -0.05)
+p4
+#cowplot::plot_grid(plotlist = list(plot.placeholder.white , p4), labels = "Figure 2", label_size = 12, ncol = 1, rel_heights = c(1,40), hjust = -0.05)
 ```
 
 ```{r}

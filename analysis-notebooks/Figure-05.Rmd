@@ -61,7 +61,7 @@ plot.placeholder <- ggplot() + geom_blank() + theme(panel.background = element_b
 ```
 
 ```{r}
-p1 <- plot_grid(plotlist = list(wc.sensitivity.mad, rpe1.wc.sensitivity.change), nrow = 2, rel_heights = c(1,0.75), labels = c("A.", "B."), align = "v", axis = "lr", scale = 0.95, label_size = 12) 
+p1 <- plot_grid(plotlist = list(rpe1.wc.sensitivity.mad, rpe1.wc.sensitivity.change), nrow = 2, rel_heights = c(1,0.75), labels = c("A.", "B."), align = "v", axis = "lr", scale = 0.95, label_size = 12) 
 p2 <- plot_grid(plotlist = list(p1, rpe1.wc.sensitivity.change.lm), nrow = 1, rel_widths = c(1,0.7), labels = c("", "C."), scale = c(1, 0.95), label_size = 12) 
 p4 <- plot_grid(plotlist = list(plot.placeholder, exp04.barcode.hist), labels = c("F.", "G."), ncol = 2, scale = 0.95, label_size = 12)
 p5 <- plot_grid(plotlist = list(p2, rpe1.arm.sensitivity.mad, rpe1.arm.sensitivity.change, p4, plot.placeholder), ncol = 1, rel_heights = c(1.5, 0.75, 0.75, 1.5, 1.5), labels = c("", "D.", "E.", ""), scale = c(1, 0.95, 0.95, 1, 1), label_size = 12)

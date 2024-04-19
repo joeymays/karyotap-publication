@@ -54,7 +54,7 @@ plot.placeholder <- ggplot() + geom_blank() + theme(panel.background = element_b
 
 ```{r}
 p2 <- plot_grid(plotlist = list(fig.full.wide, plot.placeholder), ncol = 1, rel_heights = c(0.80,1), scale = 0.95)
-cowplot::plot_grid(plotlist = list(plot.placeholder, p2), labels = "Figure 6", label_size = 12, ncol = 1, rel_heights = c(1,40), hjust = -0.05)
+cowplot::plot_grid(plotlist = list(plot.placeholder, p2), label_size = 12, ncol = 1, rel_heights = c(1,40), hjust = -0.05)
 ```
 
 ```{r}
