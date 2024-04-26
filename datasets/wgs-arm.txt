@@ -11,8 +11,8 @@ chr5p	2	3	2	3	2
 chr5q	2	3	2	2	2
 chr6p	2	2	2	2	1
 chr6q	2	2	2	2	1
-chr7p	2	3	3	3	3
-chr7q	2	3	3	3	3
+chr7p	2	3	3	3	4
+chr7q	2	3	3	3	4
 chr8p	2	2	2	2	2
 chr8q	2	2	2	2	2
 chr9p	2	3	2	2	2

@@ -129,7 +129,9 @@ gmm4 <- plotCopyNumberGMM(exp1, feature.id = "X", draw.boundaries = T) +
     annotate("text", x = 9, y = 0.95, label = "Chr X", size = 7/.pt) +
     scale_color_manual(values = c("#785EF0", "#648FFF", "#DC267F", "#FE6100", "#FFB000", "grey"))
 
-gmm.legend <- get_legend(gmm1 + theme(legend.box.margin = margin(0, 0, 5, 0), legend.position = "top") + guides(color = guide_legend(nrow = 1)))
+gmm1.legend <- gmm1 + theme(legend.box.margin = margin(0, 0, 5, 0), legend.position = "top") + guides(color = guide_legend(nrow = 1))
+
+gmm.legend <- get_plot_component(gmm1.legend, "guide-box-top", return_all = T)
 
 gmm.grid.1 <- plot_grid(plotlist = list(gmm1, gmm2, gmm3, gmm4), ncol = 2, align = "hv", axis = "lrtb")
 gmm.example.plot <- plot_grid(plotlist = list(gmm.legend, gmm.grid.1), ncol = 1, rel_heights = c(0.2, 1))
@@ -230,7 +232,7 @@ cv.results %>%
 wc.sensitivity.mad <- 
 cv.results %>% group_by(feature.id) %>% summarize(mean.pct = mean(pct.concordance), mad = mad(pct.concordance), mean.ad = DescTools::MeanAD(pct.concordance)) %>% print() %>% 
     ggplot(aes(x = feature.id, y = mean.pct)) + 
-    ggdist::geom_pointinterval(aes(ymin = mean.pct - mean.ad, ymax = mean.pct + mean.ad)) +
+    ggdist::geom_pointinterval(aes(ymin = mean.pct - mean.ad, ymax = mean.pct + mean.ad), shape = 16) +
     theme_classic_custom + 
     theme(panel.grid.major = element_line()) +
     scale_y_continuous(limits = c(40, 100), expand = c(0,0,0,0)) +
@@ -336,7 +338,7 @@ rsq <- summary(mod)$r.squared %>% round(.,2) %>% paste0("R-sq: ", .) %>% print()
 wc.sens.lm <- 
 ggplot(rpe1.data.results, aes(x=n.probes, y=pct.concordance)) +
     geom_smooth(method = "lm", se = F, color = "#C6DEA6") + 
-    geom_point() +
+    geom_point(pch = 16) +
     ggrepel::geom_text_repel(aes(label = feature.id), max.overlaps = 12, size = 7/.pt) + 
     labs(y= "Accuracy (%)", x = "Number of Probes per Chromosome") +
     theme_classic_custom + 
@@ -415,7 +417,7 @@ saveRDS(tpr.wc.bars, file = here("figures", "figure-c", "exp01.wc.theoretical.tp
 ```{r}
 tpr.wc.nprobes <- 
 ggplot(exp1.gmm.metrics, aes(x=n.probes, y=true.pos.p, color = cn.sim.class)) +
-    geom_point(alpha = 0.5, position = position_jitter(width = 0.25)) + 
+    geom_point(alpha = 0.5, position = position_jitter(width = 0.25), pch = 16) + 
     theme_classic_custom +
     theme(legend.position = "top", panel.grid.major = element_line()) +
     theme(legend.box.margin = margin(0, 10, 0, 10), legend.margin = margin(0), plot.margin = unit(c(0, 5.5, 5.5, 5.5), "pt")) +
@@ -691,7 +693,7 @@ cv.results.arms %>%
 arm.sensitivity.mad <- 
 cv.results.arms %>% group_by(feature.id, feature.label) %>% summarize(mean.pct = mean(pct.concordance), mad = mad(pct.concordance), mean.ad = DescTools::MeanAD(pct.concordance), .groups = "drop") %>% print() %>% 
     ggplot(aes(x = feature.id, y = mean.pct)) + 
-    ggdist::geom_pointinterval(aes(ymin = mean.pct - mean.ad, ymax = mean.pct + mean.ad)) +
+    ggdist::geom_pointinterval(aes(ymin = mean.pct - mean.ad, ymax = mean.pct + mean.ad), shape = 16) +
     theme_classic_custom + 
     theme(panel.grid.major = element_line(), axis.text.x = element_text(angle = 45, hjust = 1)) +
     scale_y_continuous(limits = c(30, 100), expand = c(0,0,0,0), breaks = seq(30, 100, 10)) +
@@ -785,7 +787,7 @@ rsq.arm <- summary(mod.arm)$r.squared %>% round(.,2) %>% paste0("R-sq: ", .) %>%
 arm.sens.lm <-
 ggplot(rpe1.data.arm.results, aes(x=n.probes, y=pct.concordance)) +
     geom_smooth(method = "lm", se = F, color = "#7EBDC3") + 
-    geom_point() +
+    geom_point(pch = 16) +
     ggrepel::geom_text_repel(aes(label = feature.label), max.overlaps = Inf, min.segment.length = 0.3, size = 7/.pt) + 
     labs(y= "Accuracy (%)", x = "Number of Probes per Chromosome Arm") +
     theme_classic_custom + 
@@ -865,7 +867,7 @@ saveRDS(tpr.arm.bars, file = here("figures", "figure-c", "exp01.arm.theoretical.
 ```{r}
 tpr.arm.nprobes <- 
 ggplot(exp1.gmm.metrics.arm, aes(x=n.probes, y=true.pos.p, color = cn.sim.class)) +
-    geom_point(alpha = 0.5, position = position_jitter(width = 0.25)) + 
+    geom_point(alpha = 0.5, position = position_jitter(width = 0.25), pch = 16) + 
     theme_classic_custom +
     theme(legend.position = "top", panel.grid.major = element_line()) +
     theme(legend.box.margin = margin(0, 10, 0, 10), legend.margin = margin(0), plot.margin = unit(c(0, 5.5, 5.5, 5.5), "pt")) +
@@ -873,9 +875,9 @@ ggplot(exp1.gmm.metrics.arm, aes(x=n.probes, y=true.pos.p, color = cn.sim.class)
     geom_smooth(data = rpe1.data.arm.results, aes(x=n.probes, y=pct.concordance), 
                 color = "black", inherit.aes = F, se = F, span = 1, linetype = "dashed", linewidth = 0.75) +
     scale_color_manual(values = c("#785EF0", "#648FFF", "#DC267F", "#FE6100", "#FFB000"), labels = 1:5) +
-    labs(x = "Number of Probes", y = "Simulated Sensitivity (%)", color = "Copy Number") +
-    scale_x_continuous(limits = c(4,14), breaks = seq(4,14,2)) +
-    scale_y_continuous(limits = c(15, 100), expand = c(0,0,0,0))
+    labs(x = "Number of Probes", y = "Theoretical Sensitivity (%)", color = "Copy Number") +
+    scale_x_continuous(limits = c(3.5,14.5), breaks = seq(4,14,2)) +
+    scale_y_continuous(limits = c(12, 100), expand = c(0,0,0,0))
 tpr.arm.nprobes
 ```
 
@@ -1029,11 +1031,11 @@ ggplot(chr.lengths, aes(x=length.bp/10^8, y=pct.concordance)) +
     geom_smooth(method = "lm", se = F, color = "#C6DEA6") + 
     geom_point() +
     ggrepel::geom_text_repel(aes(label = chrom), max.overlaps = 12, size = 7/.pt) + 
-    labs(y= "Sensitivity (%)", x = "Chromosome Length (100 MB)") +
+    labs(y= "Accuracy (%)", x = "Chromosome Length (100 MB)") +
     theme_classic_custom + 
     theme(panel.grid.major = element_line()) +
     scale_y_continuous(limits = c(30,100), expand = c(0,0,0,0)) +
-    annotate("text", x = 2.48, y = 37, size = 7/.pt, hjust = 1, label = paste0("Chr Length vs Sensitivity, Pearson r = ", round(length.corr, 2))) +
+    annotate("text", x = 2.48, y = 37, size = 7/.pt, hjust = 1, label = paste0("Chr Length vs Accuracy , Pearson r = ", round(length.corr, 2))) +
     annotate("text", x = 2.48, y = 32, size = 7/.pt, hjust = 1, label = paste0("Chr Length vs No. of Probes, Pearson r = ", round(n.probe.length.corr, 2)))
 chr.length.sensitivity
 ```

@@ -46,7 +46,7 @@ fig.scalar = 1.375 #figure size scalar
 ```
 
 ```{r}
-exp1.arm.smoothcn.heatmap <- readRDS(file = here("figures", "figure-c", "exp01.arm.smooth.heatmap.RDS"))
+#exp1.arm.smoothcn.heatmap <- readRDS(file = here("figures", "figure-c", "exp01.arm.smooth.heatmap.RDS"))
 arm.sensitivity <- readRDS(file = here("figures", "figure-c", "exp01.rpe1.accuracy.arm.RDS"))
 arm.sensitivity.mad <- readRDS(file = here("figures", "figure-c", "exp01.rpe1.accuracy.arm.mad.RDS"))
 arm.sens.lm <- readRDS(file = here("figures", "figure-c", "exp01.rpe1.accuracy.arm.regression.RDS"))
@@ -59,8 +59,11 @@ plot.placeholder <- ggplot() + geom_blank() + theme(panel.background = element_b
 
 ```{r}
 p3 <- plot_grid(plotlist = list(arm.sens.lm, tpr.arm.nprobes), labels = c("C.", "D."), ncol = 2, label_size = 12, scale = 0.95)
-p4 <- plot_grid(plotlist = list(as.ggplot(exp1.arm.smoothcn.heatmap), arm.sensitivity.mad, p3, plot.placeholder), ncol = 1, labels = c("A.", "B."), rel_heights = c(4,2,2,3), label_size = 12, scale = c(0.95, 0.95, 1, 1))
-cowplot::plot_grid(plotlist = list(plot.placeholder , p4), labels = "Figure 3", label_size = 12, ncol = 1, rel_heights = c(1,40), hjust = -0.05)
+p4 <- plot_grid(plotlist = list(plot.placeholder, arm.sensitivity.mad, p3, plot.placeholder), ncol = 1, labels = c("A.", "B."), rel_heights = c(4,2,2,3), 
+                label_size = 12, scale = c(0.95, 0.95, 1, 1))
+
+p4
+#cowplot::plot_grid(plotlist = list(plot.placeholder , p4), labels = "Figure 3", label_size = 12, ncol = 1, rel_heights = c(1,40), hjust = -0.05)
 ```
 
 ```{r}

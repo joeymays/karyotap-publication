@@ -1,0 +1,127 @@
+---
+title: "Figure SX"
+author: "Joey Mays"
+date: '2024-04-24'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+Additional figures for revisions
+
+# Setup
+
+```{r message=FALSE}
+library(tidyverse)
+library(here)
+library(ggplotify)
+library(ggrastr)
+library(cowplot)
+library(ComplexHeatmap)
+```
+
+```{r}
+here::i_am("analysis-notebooks/Figure-X.Rmd")
+```
+
+```{r}
+dir.create(here("figures"), showWarnings = F, recursive = T)
+fig.scalar = 1.375 #figure size scalar
+```
+
+```{r}
+plot.placeholder <- ggplot() + geom_blank() + theme(panel.background = element_blank())
+```
+
+# X1 - Clustering, Subclones
+
+```{r}
+exp1.kmeans.hm <- readRDS(file = here("figures", "figure-c", "exp1.kmeans.hm.RDS"))
+exp1.lovo.subclones.hm <- readRDS(file = here("figures", "figure-c", "exp1.lovo.subclones.hm.RDS"))
+```
+
+```{r}
+ht_opt("HEATMAP_LEGEND_PADDING" = unit(10, "mm"))
+x1.p1 <- as.ggplot(exp1.kmeans.hm)
+ht_opt(RESET = TRUE)
+```
+
+```{r}
+ht_opt("HEATMAP_LEGEND_PADDING" = unit(10, "mm"))
+x1.p2 <- as.ggplot(exp1.lovo.subclones.hm)
+ht_opt(RESET = TRUE)
+```
+
+```{r}
+x1 <- cowplot::plot_grid(plotlist = list(x1.p1, x1.p2, plot.placeholder), 
+                         label_size = 12, ncol = 1, labels = c("A.", "B.", ""), rel_heights = c(2, 1.5, 1), scale = 0.95)
+```
+
+```{r}
+x1
+```
+
+```{r}
+ggsave(plot = x1, filename = here("figures", "Figure-X1.pdf"), 
+       device = "pdf", width = 8.25, height = 10.75)
+```
+
+# X2 - Exp1 GMM Heatmap
+
+```{r}
+exp1.wc.gmm.heatmap <- readRDS(file = here("figures", "figure-c", "exp1.wc.gmm.heatmap.RDS"))
+exp1.arm.gmm.heatmap <- readRDS(file = here("figures", "figure-c", "exp01.arm.gmm.heatmap.RDS"))
+```
+
+```{r}
+ht_opt("HEATMAP_LEGEND_PADDING" = unit(10, "mm"))
+x2.p1 <- as.ggplot(exp1.wc.gmm.heatmap)
+ht_opt(RESET = TRUE)
+```
+
+```{r}
+ht_opt("HEATMAP_LEGEND_PADDING" = unit(10, "mm"))
+x2.p2 <- as.ggplot(exp1.arm.gmm.heatmap)
+ht_opt(RESET = TRUE)
+```
+
+```{r}
+x2 <- cowplot::plot_grid(plotlist = list(x2.p1, x2.p2, plot.placeholder), 
+                         label_size = 12, ncol = 1, labels = c("A.", "B.", ""), rel_heights = c(1.5, 1.5, 2), scale = 0.95)
+```
+
+```{r}
+x2
+```
+
+```{r}
+ggsave(plot = x2, filename = here("figures", "Figure-X2.pdf"), 
+       device = "pdf", width = 8.25, height = 10.75)
+```
+
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```

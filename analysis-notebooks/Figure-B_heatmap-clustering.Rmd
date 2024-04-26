@@ -78,7 +78,6 @@ scatter.raw$cluster <- colData(exp1.full)$cluster
 ```
 
 ```{r}
-scatter.raw$cluster <- fct_collapse(scatter.raw$cluster, doublet = setdiff(levels(scatter.raw$cluster), 1:5))
 scatter.raw$cluster <- fct_relevel(scatter.raw$cluster, "RPE1") #Move RPE1 to first position in factor for plotting order.
 ```
 
