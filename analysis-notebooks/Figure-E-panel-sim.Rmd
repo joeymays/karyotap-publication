@@ -34,27 +34,12 @@ library(karyotapR)
 library(tidyverse)
 library(ggplot2)
 library(here)
-library(furrr)
-```
 
-```{r}
-set.seed(20221210)
-```
-
-```{r}
-plan(multicore, workers = parallel::detectCores())
-```
-
-```{r}
 here::i_am("analysis-notebooks/Figure-E-panel-sim.Rmd")
-```
-
-```{r}
 source(here("scripts", "gmm-calc-TPR.R"))
-```
-
-```{r}
 dir.create(path = here("figures", "figure-e"), showWarnings = F)
+
+set.seed(20221210)
 ```
 
 # Load Data
@@ -84,6 +69,7 @@ n.replicates <- 50
 ```
 
 ```{r}
+message("scrambling probes")
 #scramble probe matrix 50 times
 probe.scramble.list <- list()
 
@@ -97,7 +83,10 @@ for(i in seq_len(n.replicates)){
 
 ```{r}
 add.probe.simulation <- function(idx, probe.sample) {
+     
   true.pos.rate <- list()
+  
+    message(paste("step:", idx), "-", Sys.time())
   
   #start at 4 probes to prevent division by 0 at normalization
   for (i in 4:ncol(probe.sample)) {
@@ -118,7 +107,7 @@ add.probe.simulation <- function(idx, probe.sample) {
     x <- calcNormCounts(x)
     control.cn <- generateControlCopyNumberTemplate(x, copy.number = 2, sample.feature.label = "RPE1")  
     x <- calcCopyNumber(x, control.copy.number = control.cn, sample.feature = "cluster", remove.bad.probes = T)
-    x <- suppressMessages(calcSmoothCopyNumber(x))
+    x <- suppressMessages(calcSmoothCopyNumber(x, method = "weighted.median", control.copy.number = control.cn, sample.feature = "cluster"))
     x <- suppressMessages(calcGMMCopyNumber(x, cell.barcodes = colnames(x), control.copy.number = control.cn, model.components = 1:6))
     
     true.pos.rate[[(i - 3)]] <-
@@ -134,12 +123,19 @@ add.probe.simulation <- function(idx, probe.sample) {
 ```
 
 ```{r}
-add.simulation.results <- map2(seq_len(n.replicates), probe.scramble.list, ~add.probe.simulation(.x, .y), .progress = T)
+add.simulation.results <- map2(seq_len(n.replicates), 
+                               probe.scramble.list, 
+                               ~add.probe.simulation(.x, .y))
+```
+
+
+```{r}
 add.simulation.results <- list_rbind(add.simulation.results)
 ```
 
 ```{r}
 saveRDS(add.simulation.results, file = here("datasets", "scramble.probe.sim.results.RDS"))
+message("data saved")
 ```
 
 # session_info

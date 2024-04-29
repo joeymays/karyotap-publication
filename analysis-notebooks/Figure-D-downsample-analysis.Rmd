@@ -116,14 +116,14 @@ chr2.ds
 
 ```{r}
 chr2.ds <- 
-    sim.results.full.chr2 %>% 
+    sim.results.full.chr2 %>% filter(sample.size != 23) %>% 
     ggplot(aes(x = sample.size, y = true.pos.p, color = cn.sim.class)) +
     ggdist::stat_pointinterval(position = "dodge", point_color = "black", point_size = 1) +
     theme_bw_custom +
     theme(legend.position = "top", panel.grid.minor = element_blank()) + 
     labs(y = "Theoretical Sensitivity (%)", x = "Number of Probes", color = "Copy Number") +
     scale_color_manual(values = c("#785EF0", "#648FFF", "#DC267F", "#FE6100", "#FFB000"), labels = 1:5) +
-    annotate("text", x = 11, y = 20, label = "Chr 2 ", size = 8) +
+    annotate("text", x = 10, y = 20, label = "Chr 2 ", size = 8) +
     scale_y_continuous(limits = c(20,100)) 
 chr2.ds
 ```
@@ -212,6 +212,13 @@ sim.results.combined.iqr %>% group_by(feature.id) %>% filter(!sample.size %in% c
 ``` 
 
 ```{r}
+sim.results.combined.iqr %>% filter(feature.id == 2, sample.size %in% c(4,22))
+sim.results.combined.iqr %>% filter(feature.id == 6, sample.size %in% c(4,16))
+```
+
+
+
+```{r}
 probe.ds.sim.actual <- 
 sim.results.combined %>% 
     ggplot(aes(x = sample.size, y = actual.sensitivity, fill = feature.id)) +
@@ -220,7 +227,7 @@ sim.results.combined %>%
     theme_bw_custom +
     theme(legend.position = "top", axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.grid.minor = element_blank()) +
     theme(legend.box.margin = margin(0, 10, 0, 10), legend.margin = margin(0), plot.margin = unit(c(0, 5.5, 0, 5.5), "pt")) +
-    labs(y = "Sensitivity (%)", x = "", fill = "Chromosome") +
+    labs(y = "Accuracy (%)", x = "", fill = "Chromosome") +
     
     scale_fill_manual(values = c("#DC267F", "#648FFF"))
 probe.ds.sim.actual
@@ -228,21 +235,21 @@ probe.ds.sim.actual
 
 ```{r}
 probe.ds.sim.actual.ggdist <- 
-sim.results.combined %>% 
+sim.results.combined %>% filter(sample.size != 23) %>% 
     ggplot(aes(x = sample.size, y = actual.sensitivity, color = feature.id)) +
     ggdist::stat_pointinterval(position = position_dodge(width = 0.75), point_color = "black", point_size = 1) +
     coord_cartesian(ylim = c(48,100)) +
     theme_bw_custom +
     theme(legend.position = "top", axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.grid.minor = element_blank()) +
     theme(legend.box.margin = margin(0, 10, 0, 10), legend.margin = margin(0), plot.margin = unit(c(0, 5.5, 0, 5.5), "pt")) +
-    labs(y = "Sensitivity (%)", x = "", color = "Chromosome") +
+    labs(y = "Accuracy (%)", x = "", color = "Chromosome") +
     scale_color_manual(values = c("#DC267F", "#648FFF"))
 probe.ds.sim.actual.ggdist
 ```
 
 ```{r}
 probe.ds.sim.actual.iqr <- 
-sim.results.combined.iqr %>% 
+sim.results.combined.iqr %>% filter(sample.size != 23) %>% 
     ggplot(aes(x = sample.size, y = iqr, group = feature.id, color = feature.id)) +
     geom_line(alpha = 0.6) +
     theme_bw_custom +
@@ -266,7 +273,7 @@ saveRDS(probe.ds.sim.actual.plot, file = here("figures", "figure-d", "exp01.rpe1
 ```
 
 ```{r}
-theo.legend <- get_legend(chr2.ds)
+theo.legend <-  get_plot_component(chr2.ds, "guide-box-top", return_all = T)
 ```
 
 

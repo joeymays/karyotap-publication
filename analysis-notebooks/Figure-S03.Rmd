@@ -62,6 +62,11 @@ p4 <- plot_grid(plotlist = list(plot.placeholder, p1), labels = "Supplemental Fi
 ```
 
 ```{r}
+p4
+```
+
+
+```{r}
 ggsave(filename = here("figures", "Figure-S03.pdf"), 
        device = "pdf", width = 8.25, height = 10.75)
 ```

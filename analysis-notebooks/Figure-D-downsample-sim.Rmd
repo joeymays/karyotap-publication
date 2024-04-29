@@ -39,7 +39,7 @@ library(furrr)
 
 ```{r}
 set.seed(20221210)
-#plan(multicore, workers = parallel::detectCores())
+#plan(multicore, workers = parallel::detectCores()-1)
 plan(multisession, workers = 4)
 ```
 

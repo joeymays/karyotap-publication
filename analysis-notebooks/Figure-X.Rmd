@@ -119,6 +119,39 @@ ggsave(plot = x2, filename = here("figures", "Figure-X2.pdf"),
        device = "pdf", width = 8.25, height = 10.75)
 ```
 
+# X3 - Exp4 GMM Heatmap
+
+```{r}
+exp4.wc.gmm.heatmap <- readRDS(file = here("figures", "figure-i", "exp04.wc.gmm.heatmap.RDS"))
+exp4.arm.gmm.heatmap <- readRDS(file = here("figures", "figure-i", "exp04.arm.gmm.heatmap.RDS"))
+```
+
+```{r}
+ht_opt("HEATMAP_LEGEND_PADDING" = unit(10, "mm"))
+x3.p1 <- as.ggplot(exp4.wc.gmm.heatmap)
+ht_opt(RESET = TRUE)
+```
+
+```{r}
+ht_opt("HEATMAP_LEGEND_PADDING" = unit(10, "mm"))
+x3.p2 <- as.ggplot(exp4.arm.gmm.heatmap)
+ht_opt(RESET = TRUE)
+```
+
+```{r}
+x3 <- cowplot::plot_grid(plotlist = list(x3.p1, x3.p2, plot.placeholder), 
+                         label_size = 12, ncol = 1, labels = c("A.", "B.", ""), rel_heights = c(1.5, 1.5, 2), scale = 0.95)
+```
+
+```{r}
+x3
+```
+
+```{r}
+ggsave(plot = x3, filename = here("figures", "Figure-X3.pdf"), 
+       device = "pdf", width = 8.25, height = 10.75)
+```
+
 
 # session_info
 

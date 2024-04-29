@@ -111,18 +111,22 @@ zero.counts <- barcode.counts %>% group_by(cluster, feature.barcode) %>% mutate(
 ```
 
 ```{r}
+cluster.labs <- c("RPE1 (n = 631)", "hCEC (n = 642)", "hPNE (n = 552)")
+names(cluster.labs) <- c("RPE1", "HCEC", "HPNE")
+```
+
+```{r}
 exp04.barcode.hist <- 
 ggplot(barcode.counts, aes(x = barcode.counts, fill = cluster)) + 
     geom_histogram(binwidth = 0.5, color = "black") +
     theme_bw_custom + 
     theme(strip.background = element_blank(), axis.text.x.bottom = element_text(angle = 45, hjust = 1), 
           panel.grid.minor = element_blank(), legend.position = "none") +
-    facet_grid(feature.barcode ~ cluster) +
+    facet_grid(feature.barcode ~ cluster, labeller = labeller(cluster = cluster.labs)) +
     scale_x_continuous(trans = "log1p", breaks = c(0,10,50,100,200,400)) +
     labs(y = "Frequency", x = "gRNA/Barcode Sequence Reads per Cell") +
     scale_fill_manual(values = c("#785EF0", "#648FFF", "#DC267F")) +
-    ylim(0,700) +
-    geom_text(data = zero.counts, aes(label = pct.zero.label, x = 0, y = Inf), hjust = 0.2, vjust = 1, size = 7/.pt)
+    ylim(0,700)
 exp04.barcode.hist
 ```
 

@@ -35,6 +35,7 @@ library(tidyverse)
 library(ggplot2)
 library(ggrastr)
 library(here)
+library(ComplexHeatmap)
 ```
 
 ```{r}
@@ -190,8 +191,14 @@ row.annotation <- ComplexHeatmap::rowAnnotation(
 ```
 
 ```{r}
-probe.copynumber.hm <- assayHeatmap(exp1, assay = "copyNumber", split.col.by = "arm", split.row.by = "cluster", color.custom = circlize::colorRamp2(c(1, 1.5, 2, 2.5, 3, 4), c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c")), 
-            heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number")
+#relabel arms for heatmap
+exp1.hm <- exp1
+rowData(exp1.hm)$arm <- fct_relabel(rowData(exp1.hm)$arm, ~str_split_i(.x, "chr", 2))
+```
+
+```{r}
+probe.copynumber.hm <- assayHeatmap(exp1.hm, assay = "copyNumber", split.col.by = "arm", split.row.by = "cluster", color.custom = circlize::colorRamp2(c(1, 1.5, 2, 2.5, 3, 4), c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c")), raster_quality = 5, raster_by_magick = T, column_title_rot = 45,
+            heatmap_legend_param = list(title_position = "topcenter", border = "black", labels = c("1", "2", "3", "4+"), at = 1:4), name = "Cell-Probe Unit\nCopy Number Score")
 probe.copynumber.hm
 ```
 
@@ -201,9 +208,15 @@ saveRDS(probe.copynumber.hm, here("figures", "figure-b", "exp01.heatmap.RDS"))
 
 ```{r}
 pdf(file = here("figures", "figure-b", "exp01.heatmap.pdf"), 
-    width = 7.7, height = 3.2)
-assayHeatmap(exp1, assay = "copyNumber", split.col.by = "arm", split.row.by = "cluster", color.custom = circlize::colorRamp2(c(1, 1.5, 2, 2.5, 3, 4), c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c")), 
-            heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number", use_raster = TRUE, raster_quality = 7)
+    width = 8.0, height = 3.0)
+
+ht_opt("HEATMAP_LEGEND_PADDING" = unit(15, "mm"))
+
+draw(probe.copynumber.hm, 
+     padding = unit(c(2,2,2,8), "mm"))
+
+ht_opt(RESET = TRUE)
+
 dev.off()
 ```
 

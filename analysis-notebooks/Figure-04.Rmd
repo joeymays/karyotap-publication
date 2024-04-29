@@ -59,7 +59,7 @@ plot.placeholder <- ggplot() + geom_blank() + theme(panel.background = element_b
 p2 <- plot_grid(plotlist = list(probe.ds.sim.actual.plot, probe.sim.combined), nrow = 1, rel_widths = c(0.7,1), labels = c("A.", "B."), label_size = 12, scale = 0.95, align = "h", axis = "tb") 
 p3 <- plot_grid(plotlist = list(p2, plot.placeholder, plot.placeholder, plot.placeholder), ncol = 1, rel_heights = c(1, 0.8, 1, 0.7), labels = c("", "", ""), 
                 label_size = 12, scale = c(1, 0.95, 0.95))
-cowplot::plot_grid(plotlist = list(plot.placeholder, p3), labels = "Figure 4", label_size = 12, ncol = 1, rel_heights = c(1,40), hjust = -0.05)
+p3
 ```
 
 ```{r}

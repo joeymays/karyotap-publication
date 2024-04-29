@@ -45,6 +45,13 @@ set.seed(20221210)
 ```{r}
 here::i_am("analysis-notebooks/Figure-E-panel-analysis-3component.Rmd")
 fig.scalar = 1.375 #figure size scalar
+
+theme_bw_custom <- theme_bw()
+theme_bw_custom$axis.text <- element_text(size = 7)
+theme_bw_custom$axis.title <- element_text(size = 8)
+theme_bw_custom$legend.text <- element_text(size = 7)
+theme_bw_custom$legend.title <- element_text(size = 8)
+theme_bw_custom$strip.text <- element_text(size = 7)
 ```
 
 ```{r}

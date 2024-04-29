@@ -222,6 +222,8 @@ coldata.merge <- full.coldata %>% left_join(subset.coldata, by = "cell.barcode")
 all(colnames(exp4) == coldata.merge$cell.barcode)
 
 colData(exp4)$cluster <- coldata.merge$cluster
+
+colData(exp4)$cluster <- fct_na_value_to_level(colData(exp4)$cluster, level = "doublet")
 ```
 
 # Save Objects

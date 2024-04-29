@@ -84,6 +84,11 @@ p5 <- cowplot::plot_grid(plotlist = list(plot.placeholder, p4), labels = "Suppli
 ```
 
 ```{r}
+p5
+```
+
+
+```{r}
 ggsave(p5, filename = here("figures", "Figure-S04.pdf"), 
        device = "pdf", width = 8.25, height = 10.75)
 ```

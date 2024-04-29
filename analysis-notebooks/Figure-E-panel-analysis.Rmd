@@ -103,6 +103,11 @@ add.simulation.results.thresholds <- add.simulation.results %>%
 ```
 
 ```{r}
+add.simulation.results %>% filter(cn.sim.class == "sim_cn5") %>% summarize(max(true.pos.p))
+```
+
+
+```{r}
 ggplot(add.simulation.results, aes(x = n.probes, y = true.pos.p)) + 
     ggdist::stat_pointinterval(point_interval = "mean_qi", point_size = 0.5, interval_color = "darkgrey") + 
     theme_bw() +

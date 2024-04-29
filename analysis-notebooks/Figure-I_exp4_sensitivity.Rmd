@@ -91,8 +91,6 @@ scatter.raw$cluster <- colData(exp4.full)$cluster
 ```
 
 ```{r}
-scatter.raw$cluster <- fct_collapse(scatter.raw$cluster, doublet = setdiff(levels(scatter.raw$cluster), 1:3))
-scatter.raw$cluster <- fct_recode(scatter.raw$cluster, HCEC = "1", RPE1 = "2", HPNE = "3")
 scatter.raw$cluster <- fct_relevel(scatter.raw$cluster, "RPE1") #Move RPE1 to first position in factor for plotting order.
 ```
 
@@ -199,14 +197,20 @@ gmm.anno.scale <- c("1" = "#2c7bb6", "2" = "#ffffff", "3" = "#fdae61", "4" = "#d
 
 ```{r}
 exp4.wc.gmm.heatmap <- 
-    assayHeatmap(exp4, alt.exp = "smoothedCopyNumberByChr", assay = "gmmCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 0, color.custom = gmm.anno.scale, heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number")
+    assayHeatmap(exp4, alt.exp = "smoothedCopyNumberByChr", assay = "gmmCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 0, color.custom = gmm.anno.scale, heatmap_legend_param = list(title_position = "topcenter", border = "black", labels = c("4+", "3", "2", "1"), at = 4:1), name = "Single Cell\nCopy Number\nCall")
 exp4.wc.gmm.heatmap
+```
+
+```{r}
+saveRDS(exp4.wc.gmm.heatmap, file = here("figures", "figure-i", "exp04.wc.gmm.heatmap.RDS"))
 ```
 
 ```{r}
 pdf(file = here("figures", "figure-i", "exp04.wc.gmm.heatmap.pdf"), 
     width = 7.90, height = 3.75)
-draw(exp4.wc.gmm.heatmap, use_raster = T, raster_quality = 7)
+ht_opt("HEATMAP_LEGEND_PADDING" = unit(10, "mm"))
+draw(exp4.wc.gmm.heatmap, use_raster = T, raster_quality = 7, padding = unit(c(2,2,2,8), "mm"))
+ht_opt("HEATMAP_LEGEND_PADDING" = unit(10, "mm"))
 dev.off()
 ```
 
@@ -250,14 +254,25 @@ dev.off()
 ### GMM Heatmap
 
 ```{r}
+exp4.hm <- exp4
+#relabel arms for heatmap
+rownames(altExp(exp4.hm, "smoothedCopyNumberByArm")) <- str_split_i(rownames(altExp(exp4.hm, "smoothedCopyNumberByArm")), "chr", 2)
+```
+
+```{r}
 gmm.anno.scale <- c("1" = "#2c7bb6", "2" = "#ffffff", "3" = "#fdae61", "4" = "#d7191c", "5" = "#d7191c", "6" = "#d7191c")
 ```
 
 ```{r}
 exp4.arm.gmm.heatmap <- 
-    assayHeatmap(exp4, alt.exp = "smoothedCopyNumberByArm", assay = "gmmCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 90, color.custom = gmm.anno.scale, heatmap_legend_param = list(title_position = "lefttop-rot", border = "black"), name = "Copy Number")
+    assayHeatmap(exp4.hm, alt.exp = "smoothedCopyNumberByArm", assay = "gmmCopyNumber", split.col.by = "feature.id", split.row.by = "cluster", column_title_rot = 45, color.custom = gmm.anno.scale, heatmap_legend_param = list(title_position = "topcenter", border = "black", labels = c("4+", "3", "2", "1"), at = 4:1), name = "Single Cell\nCopy Number\nCall")
 exp4.arm.gmm.heatmap
 ```
+
+```{r}
+saveRDS(exp4.arm.gmm.heatmap, file = here("figures", "figure-i", "exp04.arm.gmm.heatmap.RDS"))
+```
+
 
 ```{r}
 pdf(file = here("figures", "figure-i", "exp04.arm.gmm.heatmap.pdf"), 
@@ -765,7 +780,7 @@ ggplot(combined.arm.results, aes(x = feature.id, y = delta.acc)) +
     theme_bw_custom +
     theme(axis.text.x = element_text(hjust = 1, angle = 45), panel.border = element_blank(), axis.line = element_line(), panel.grid.minor.y = element_blank()) + 
     labs(x = "Chromosome Arm", y = "\u0394 Accuracy (pp)") +
-    scale_y_continuous(limits = c(-15, 30), expand = c(0,0,0,0)) +
+    scale_y_continuous(limits = c(-20, 30), expand = c(0,0,0,0)) +
     geom_text(aes(y = 28, label = sprintf("%+2d", delta.probes)), size = 6/.pt) +
     geom_hline(yintercept = 0) +
     scale_x_discrete(labels = combined.arm.results$feature.label)
@@ -871,7 +886,7 @@ tpr.arms.bars.compare <-
           strip.background = element_blank(), axis.text.x = element_text(angle = 45, hjust = 1)) +
     scale_fill_viridis_d() +
     labs(x = "Chromosome Arm", y = "\u0394 Simulated Sensitivity (pp)") +
-    scale_y_continuous(limits = c(-10, 30), breaks = c(-10, 0, 10, 20, 30), expand = c(0,0,0,10)) +
+    scale_y_continuous(limits = c(-20, 30), breaks = c(-10, 0, 10, 20, 30), expand = c(0,0,0,10)) +
     geom_text(aes(y = 30, label = sprintf("%+2d", delta.probes)), size = 6/.pt)
 tpr.arms.bars.compare
 ```
