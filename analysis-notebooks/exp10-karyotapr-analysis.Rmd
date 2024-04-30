@@ -1,0 +1,233 @@
+---
+title: "Exp 010-CO810 karyotapR analysis"
+author: "Joey Mays"
+date: 2024-04-30
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+# Setup
+
+```{r message=FALSE}
+library(karyotapR)
+library(tidyverse)
+library(ggplot2)
+library(ggdist)
+library(here)
+```
+
+```{r}
+set.seed(20240430)
+```
+
+```{r}
+here::i_am("analysis-notebooks/exp10-karyotapr-analysis.Rmd")
+```
+
+# Load Data
+
+```{r}
+tapestri.filename <- here("datasets", "tapestri-experiment10-panelv3.h5")
+```
+
+# Construct Object
+
+```{r}
+exp10 <- createTapestriExperiment(tapestri.filename, panel.id = "CO810")
+```
+
+# AF Clustering
+
+## Embedding
+
+Remove variants from gRNA probe
+
+```{r}
+exp10 <- runPCA(exp10, "alleleFrequency", sd.min.threshold = 25)
+PCAKneePlot(exp10)
+```
+
+
+```{r}
+reducedDimPlot(exp10, dim.reduction = "pca")
+```
+
+```{r}
+exp10 <- runUMAP(exp10, alt.exp = "alleleFrequency", use.pca.dims = T, pca.dims = 1:2)
+reducedDimPlot(exp10, alt.exp = "alleleFrequency", dim.reduction = "umap")
+```
+
+## Clustering
+
+```{r}
+exp10 <- runClustering(exp10, alt.exp = "alleleFrequency", eps = 0.6)
+reducedDimPlot(exp10, dim.reduction = "umap", group.label = "cluster")
+```
+
+Number of cells in each cluster
+
+```{r}
+fct_count(colData(exp10)$cluster)
+```
+
+Filter
+
+```{r}
+exp10.subset <- exp10[,colData(exp10)$cluster %in% 1:3]
+```
+
+```{r}
+reducedDimPlot(exp10.subset, dim.reduction = "umap", group.label = "cluster")
+```
+
+
+## Probes
+
+```{r}
+summary(rowData(exp10.subset)$median.reads > 5)
+rowData(exp10.subset)[rowData(exp10.subset)$median.reads <= 5,]
+```
+
+```{r}
+exp10.subset <- exp10.subset[rowData(exp10.subset)$median.reads > 5,] # 4 probes filtered for exp
+exp10.subset <- exp10.subset[!rowData(exp10.subset)$probe.id %in% c("AMPL923131", "TAMPL46665", "TAMPL46666")] #filter 3 problem probes with low median counts
+```
+
+# Normalization
+
+```{r}
+exp10.subset <- calcNormCounts(exp10.subset, method = "libNorm", scaling.factor = 10000)
+```
+
+## Copy Number Calculation
+
+Rename cluster labels
+
+```{r}
+colData(exp10.subset)$cluster <- fct_drop(fct_recode(colData(exp10.subset)$cluster, RPE1 = "1", LoVo = "2", LS513 = "3"))
+fct_count(colData(exp10.subset)$cluster)
+```
+
+Generate control.copy.number lookup table for RPE1 cells, set 10q to ploidy = 3
+
+```{r}
+control.copy.number <- generateControlCopyNumberTemplate(exp10.subset, sample.feature.label = "RPE1", copy.number = 2)
+control.copy.number["chr10q", "copy.number"] <- 3
+exp10.subset <- calcCopyNumber(exp10.subset, control.copy.number = control.copy.number, sample.feature = "cluster")
+```
+
+```{r}
+cn.tidy <- getTidyData(exp10.subset, assay = "copyNumber")
+```
+
+```{r}
+cn.tidy %>%
+  group_by(feature.id, cluster) %>%
+  summarize(median.ploidy = median(copyNumber), .groups = "drop") %>%
+  ggplot(aes(x = feature.id, y = median.ploidy)) +
+  geom_point(size = 1) +
+  facet_wrap(cluster ~ ., ncol = 1) +
+  theme(axis.text.x = element_blank()) +
+    ylim(0,8)
+```
+
+## Copy Number Smoothing
+
+```{r}
+exp10.subset <- calcSmoothCopyNumber(exp10.subset, method = "weighted.median", control.copy.number = control.copy.number, sample.feature = "cluster")
+rpe1.bc <- colData(exp10.subset) %>% as_tibble() %>% filter(cluster == "RPE1") %>% pull(cell.barcode)
+exp10.subset <- calcGMMCopyNumber(exp10.subset, cell.barcodes = rpe1.bc, control.copy.number = control.copy.number, model.components = 1:6)
+```
+
+```{r}
+smoothed.cn.tidy.chr <- getTidyData(exp10.subset, alt.exp = "smoothedCopyNumberByChr", assay = "smoothedCopyNumber")
+```
+
+```{r}
+ggplot(smoothed.cn.tidy.chr, aes(x = feature.id, y = smoothedCopyNumber)) + 
+    facet_wrap(cluster ~., ncol = 1) +
+    ggdist::stat_halfeye(point_size = 2, alpha = 0.8)
+```
+
+```{r}
+smoothed.cn.tidy.arm <- getTidyData(exp10.subset, alt.exp = "smoothedCopyNumberByArm", assay = "smoothedCopyNumber")
+```
+
+```{r}
+ggplot(smoothed.cn.tidy.arm, aes(x = feature.id, y = smoothedCopyNumber)) +
+  facet_wrap(cluster ~ ., ncol = 1) +
+  ggdist::stat_halfeye(point_size = 2, alpha = 0.8) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_y_continuous(breaks = c(0, 2, 4, 6, 8, 10))
+```
+
+# Heatmaps
+
+```{r}
+assayHeatmap(exp10.subset, assay = "copyNumber", split.col.by = "chr", split.row.by = "cluster", color.preset = "copy.number.denoise", name = "CN")
+```
+
+```{r}
+assayHeatmap(exp10.subset, alt.exp = "smoothedCopyNumberByChr", assay = "smoothedCopyNumber", split.row.by = "cluster", color.preset = "copy.number.denoise", name = "smCN", column_names_rot = 0, column_names_centered = T)
+```
+
+```{r}
+assayHeatmap(exp10.subset, alt.exp = "smoothedCopyNumberByArm", assay = "smoothedCopyNumber", split.row.by = "cluster", color.preset = "copy.number.denoise", name = "smCN")
+```
+
+```{r}
+assayHeatmap(exp10.subset, alt.exp = "smoothedCopyNumberByChr", assay = "gmmCopyNumber", split.row.by = "cluster", color.preset = "copy.number.denoise", name = "gmmCN", column_names_rot = 0, column_names_centered = T)
+```
+
+```{r}
+assayHeatmap(exp10.subset, alt.exp = "smoothedCopyNumberByArm", assay = "gmmCopyNumber", split.row.by = "cluster", color.preset = "copy.number.denoise", name = "gmmCN")
+```
+
+# Label Transfers
+
+```{r}
+full.coldata <- colData(exp10) %>% as_tibble() %>% select(-cluster)
+subset.coldata <- colData(exp10.subset) %>% as_tibble() %>% select(-total.reads)
+
+coldata.merge <- full.coldata %>% left_join(subset.coldata, by = "cell.barcode")
+
+all(colnames(exp10) == coldata.merge$cell.barcode)
+
+colData(exp10)$cluster <- coldata.merge$cluster
+
+colData(exp10)$cluster <- fct_na_value_to_level(colData(exp10)$cluster, level = "doublet")
+```
+
+# Save Objects
+
+```{r}
+saveRDS(exp10, file = here("datasets", "exp10.full.tapestriexperiment.RDS"))
+saveRDS(exp10.subset, file = here("datasets", "exp10.tapestriexperiment.RDS"))
+```
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```

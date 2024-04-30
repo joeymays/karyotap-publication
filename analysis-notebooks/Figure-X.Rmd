@@ -152,6 +152,63 @@ ggsave(plot = x3, filename = here("figures", "Figure-X3.pdf"),
        device = "pdf", width = 8.25, height = 10.75)
 ```
 
+# X4 - Exp10 GMM Heatmap
+
+```{r}
+exp10.wc.gmm.heatmap <- readRDS(file = here("figures", "figure-l", "exp10.wc.gmm.heatmap.RDS"))
+exp10.arm.gmm.heatmap <- readRDS(file = here("figures", "figure-l", "exp10.arm.gmm.heatmap.RDS"))
+```
+
+```{r}
+ht_opt("HEATMAP_LEGEND_PADDING" = unit(10, "mm"))
+x4.p1 <- as.ggplot(exp10.wc.gmm.heatmap)
+ht_opt(RESET = TRUE)
+```
+
+```{r}
+ht_opt("HEATMAP_LEGEND_PADDING" = unit(10, "mm"))
+x4.p2 <- as.ggplot(exp10.arm.gmm.heatmap)
+ht_opt(RESET = TRUE)
+```
+
+```{r}
+x4 <- cowplot::plot_grid(plotlist = list(x4.p1, x4.p2, plot.placeholder), 
+                         label_size = 12, ncol = 1, labels = c("A.", "B.", ""), rel_heights = c(1.5, 1.5, 2), scale = 0.95)
+```
+
+```{r}
+x4
+```
+
+```{r}
+ggsave(plot = x4, filename = here("figures", "Figure-X4.pdf"), 
+       device = "pdf", width = 8.25, height = 10.75)
+```
+
+# X5 - V3 V2 Comparison
+
+```{r}
+v3.sensitivity.compare.plot <- readRDS(here("figures", "figure-l", "exp10.rpe1.sensitivity.compare.RDS"))
+v3.sensitivity.compare.plot.arms <- readRDS(here("figures", "figure-l", "exp10.rpe1.sensitivity.compare.arms.RDS"))
+```
+
+```{r}
+x5.1 <- cowplot::plot_grid(plotlist = list(v3.sensitivity.compare.plot, v3.sensitivity.compare.plot.arms), 
+                         label_size = 12, 
+                         ncol = 2, labels = c("A.", "B."), scale = 0.95)
+x5 <- cowplot::plot_grid(plotlist = list(x5.1, plot.placeholder), 
+                         ncol = 1, rel_heights = c(1, 3), scale = 0.95)
+```
+
+```{r}
+x5
+```
+
+```{r}
+ggsave(plot = x5, filename = here("figures", "Figure-X5.pdf"), 
+       device = "pdf", width = 8.25, height = 10.75)
+```
+
 
 # session_info
 

@@ -1,0 +1,80 @@
+---
+title: "Figure 7"
+author: "Joey Mays"
+date: '2024-04-30'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+# Setup
+
+```{r message=FALSE}
+library(tidyverse)
+library(here)
+library(ggplotify)
+library(cowplot)
+```
+
+```{r}
+here::i_am("analysis-notebooks/Figure-07.Rmd")
+```
+
+```{r}
+dir.create(here("figures"), showWarnings = F, recursive = T)
+fig.scalar = 1.375 #figure size scalar
+```
+
+```{r}
+rpe1.wc.sensitivity.mad <- readRDS(here("figures", "figure-l", "exp10.rpe1.sensitivity.wc.mad.RDS"))
+rpe1.wc.sensitivity.change <- readRDS(here("figures", "figure-l", "exp10.rpe1.sensitivity.wc.change.RDS"))
+
+rpe1.arm.sensitivity.mad <- readRDS(here("figures", "figure-l", "exp10.rpe1.sensitivity.arm.mad.RDS"))
+rpe1.arm.sensitivity.change <- readRDS(here("figures", "figure-l", "exp10.rpe1.sensitivity.arm.change.RDS"))
+```
+
+```{r}
+plot.placeholder <- ggplot() + geom_blank() + theme(panel.background = element_blank())
+```
+
+```{r}
+p1 <- plot_grid(plotlist = list(rpe1.wc.sensitivity.mad, rpe1.wc.sensitivity.change), nrow = 2, rel_heights = c(1,0.75), labels = c("A.", "B."), align = "v", axis = "lr", scale = 0.95, label_size = 12) 
+p2 <- plot_grid(plotlist = list(p1, plot.placeholder), nrow = 1, rel_widths = c(1,0.7), labels = c("", ""), scale = c(1, 0.95), label_size = 12) 
+p4 <- plot_grid(plotlist = list(plot.placeholder, plot.placeholder), labels = c(), ncol = 2, scale = 0.95, label_size = 12)
+p5 <- plot_grid(plotlist = list(p2, rpe1.arm.sensitivity.mad, rpe1.arm.sensitivity.change, p4, plot.placeholder), ncol = 1, rel_heights = c(1.5, 0.75, 0.75, 1.5, 1.5), labels = c("", "C.", "D.", ""), scale = c(1, 0.95, 0.95, 1, 1), label_size = 12)
+
+p5
+```
+
+```{r}
+ggsave(filename = here("figures", "Figure-07.pdf"), 
+       device = "pdf", width = 8.25, height = 10.75)
+```
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```
+
+
