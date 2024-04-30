@@ -246,6 +246,16 @@ cn.gmm.results.collapse.prop.compare$alpha <- ifelse(cn.gmm.results.collapse.pro
 ```
 
 ```{r}
+cn.gmm.results.collapse.prop.compare %>% filter(sample.call %in% c("gNC", "g6_2"), feature.id == 6)
+cn.gmm.results.collapse.prop.compare %>% filter(sample.call %in% c("gNC", "g7_1"), feature.id == 7)
+fisher.result.figure %>% filter(feature.id == 20)
+cn.gmm.results.collapse.prop.compare %>% filter(sample.call %in% c("gNC", "g20_3"), feature.id == 20)
+cn.gmm.results.collapse.prop.compare %>% filter(sample.call %in% c("gNC", "g20_3"), feature.id == 2)
+fisher.result.figure %>% filter(feature.id == 2, sample.call == "g20_3")
+```
+
+
+```{r}
 fig.full.wide.delta <- 
 cn.gmm.results.collapse.prop.compare %>% filter(sample.call != "gNC") %>% 
     ggplot(aes(x = feature.id, y = delta.prop, fill = gmmCopyNumber)) +

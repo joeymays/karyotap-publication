@@ -297,9 +297,9 @@ ggplot(data.frame(clusters = 1:20, wss = exp1.subset.mat1.wss), aes(x = clusters
 
 ```{r}
 exp1.kmeans.hm <- assayHeatmap(exp1, alt.exp = "smoothedCopyNumberByArm", assay = "smoothedCopyNumber", name = "Single Cell\nCopy Number\nScore", 
-             left_annotation = cellline.anno, use_raster = T, row_split = exp1.subset.mat1.cluster.list[[5]],
+             left_annotation = cellline.anno, row_split = exp1.subset.mat1.cluster.list[[5]],
              color.custom = circlize::colorRamp2(c(1, 1.5, 2, 2.5, 3, 4), c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c")),
-             heatmap_legend_param = list(title_position = "topcenter", border = "black", labels = c("1", "2", "3", "4+"), at = 1:4), raster_quality = 5, raster_by_magick = T, cluster_rows = F)
+             heatmap_legend_param = list(title_position = "topcenter", border = "black", labels = c("1", "2", "3", "4+"), at = 1:4), use_raster = F, cluster_rows = F)
 ```
 
 ```{r}
@@ -356,7 +356,7 @@ exp1.lovo.subclones.hm <- assayHeatmap(exp1.lovo, alt.exp = "smoothedCopyNumberB
              name = "Single Cell\nCopy Number\nScore", 
              row_split = exp1.lovo.mat.cluster.list[[2]], 
              color.custom = circlize::colorRamp2(c(1, 1.5, 2, 2.5, 3, 4), c("#2c7bb6", "#ffffff", "#ffffff", "#ffffff", "#fdae61", "#d7191c")),
-             heatmap_legend_param = list(title_position = "topcenter", border = "black", labels = c("1", "2", "3", "4+"), at = 1:4), raster_quality = 5, raster_by_magick = T, cluster_rows = F,
+             heatmap_legend_param = list(title_position = "topcenter", border = "black", labels = c("1", "2", "3", "4+"), at = 1:4), use_raster = FALSE, cluster_rows = F,
              left_annotation = cellline.anno[colData(exp1)$cluster == "LoVo"])
 ```
 

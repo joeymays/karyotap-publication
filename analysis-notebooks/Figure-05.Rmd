@@ -57,6 +57,12 @@ exp04.barcode.hist <- readRDS(file = here("figures", "figure-j", "exp04.barcode.
 ```
 
 ```{r}
+#fix bargraph y axis 
+exp04.barcode.hist <- exp04.barcode.hist + scale_y_continuous(expand = c(0,0,0.1,0))
+```
+
+
+```{r}
 plot.placeholder <- ggplot() + geom_blank() + theme(panel.background = element_blank())
 ```
 
