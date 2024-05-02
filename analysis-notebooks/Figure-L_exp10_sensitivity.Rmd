@@ -953,6 +953,27 @@ ggplot(exp10.gmm.specificity.arm.3comp, aes(x=n.probes, y=tnr, color = cn.sim.cl
     scale_y_continuous(limits = c(70, 100), expand = c(0,0,0,1))
 ```
 
+# Theo Sensitivity Table
+
+```{r}
+exp10.gmm.metrics.table <- exp10.gmm.metrics %>% mutate(feature.id = paste0("chr", feature.id)) %>% rbind(exp10.gmm.metrics.arms) %>% select(feature.id, cn.sim.class, true.pos.p) %>% mutate(true.pos.p = round(true.pos.p, 2))
+exp10.gmm.metrics.table <- exp10.gmm.metrics.table %>% pivot_wider(names_from = cn.sim.class, values_from = true.pos.p)
+```
+
+```{r}
+exp10.gmm.metrics.3.table <- exp10.gmm.metrics.3 %>% mutate(feature.id = paste0("chr", feature.id))
+exp10.gmm.metrics.arm.3comp
+```
+
+```{r}
+sensitivity.gain <- exp10.gmm.metrics.3.table %>% filter(cn.sim.class == "sim_cn3") %>% pull(true.pos.p) %>% round(.,2) %>% set_names(NULL)
+sensitivity.gain <- c(sensitivity.gain, exp10.gmm.metrics.arm.3comp %>% filter(cn.sim.class == "sim_cn3") %>% pull(true.pos.p) %>% round(.,2) %>% set_names(NULL))
+exp10.gmm.metrics.table$gain <- sensitivity.gain
+```
+
+```{r}
+write.csv(x = exp10.gmm.metrics.table, file = here("figures", "figure-l", "exp10.theoretical.sensitivity.csv"), quote = F, row.names = F)
+```
 
 # session_info
 

@@ -393,7 +393,6 @@ exp1.gmm.metrics <- exp1.gmm.metrics %>% mutate(false.neg.p = false.neg.p * 100,
 exp1.gmm.metrics.avg <- exp1.gmm.metrics %>% group_by(cn.sim.class) %>% summarize(mean.tpr = mean(true.pos.p), .groups = "drop") %>% print()
 ```
 
-
 ```{r}
 tpr.wc.bars <- 
 ggplot(exp1.gmm.metrics, aes(x = feature.id, y = true.pos.p)) +
@@ -862,6 +861,15 @@ tpr.arm.bars
 
 ```{r}
 saveRDS(tpr.arm.bars, file = here("figures", "figure-c", "exp01.arm.theoretical.tpr.bars.RDS"))
+```
+
+### Theo Sensitivity Table
+
+```{r}
+exp1.gmm.metrics.table <- exp1.gmm.metrics %>% mutate(feature.id = paste0("chr", feature.id)) %>% rbind(exp1.gmm.metrics.arm) %>% select(feature.id, cn.sim.class, true.pos.p) %>% mutate(true.pos.p = round(true.pos.p, 2))
+exp1.gmm.metrics.table <- exp1.gmm.metrics.table %>% pivot_wider(names_from = cn.sim.class, values_from = true.pos.p)
+
+write.table(x = exp1.gmm.metrics.table, file = here("figures", "figure-c", "exp01.theoretical.sensitivity.txt"), quote = F, sep = '\t', row.names = F, col.names = T)
 ```
 
 ```{r}

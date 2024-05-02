@@ -47,8 +47,8 @@ fig.scalar = 1.375 #figure size scalar
 
 ```{r}
 chr.length.sensitivity <- readRDS(here("figures", "figure-c", "exp01.rpe1.accuracyVsLength.RDS"))
-tpr.wc.bars <- readRDS(here("figures", "figure-c", "exp01.wc.theoretical.tpr.bars.RDS"))
-tpr.arm.bars <- readRDS(file = here("figures", "figure-c", "exp01.arm.theoretical.tpr.bars.RDS"))
+#tpr.wc.bars <- readRDS(here("figures", "figure-c", "exp01.wc.theoretical.tpr.bars.RDS"))
+#tpr.arm.bars <- readRDS(file = here("figures", "figure-c", "exp01.arm.theoretical.tpr.bars.RDS"))
 ```
 
 ```{r}
@@ -57,8 +57,8 @@ plot.placeholder <- ggplot() + geom_blank() + theme(panel.background = element_b
 
 ```{r}
 p1 <- plot_grid(plotlist = list(chr.length.sensitivity, plot.placeholder), ncol = 2, labels = c("A.", ""), label_size = 12, scale = 0.95)
-p2 <- plot_grid(plotlist = list(tpr.wc.bars, plot.placeholder), rel_widths = c(1, 1), ncol = 2, labels = c("B.", ""), label_size = 12, scale = 0.95)
-p3 <- plot_grid(plotlist = list(p1, p2, tpr.arm.bars, plot.placeholder), ncol = 1, rel_heights = c(0.8,1.1,1.1,1), labels = c("", "", "C."), label_size = 12, scale = c(1,1,0.95))
+p2 <- plot_grid(plotlist = list(plot.placeholder, plot.placeholder), rel_widths = c(1, 1), ncol = 2, labels = c("", ""), label_size = 12, scale = 0.95)
+p3 <- plot_grid(plotlist = list(p1, p2, plot.placeholder, plot.placeholder), ncol = 1, rel_heights = c(0.8,1.1,1.1,1), labels = c("", "", ""), label_size = 12, scale = c(1,1,0.95))
 p4 <- plot_grid(plotlist = list(plot.placeholder, p3), labels = "Supplemental Figure 2", label_size = 12, ncol = 1, rel_heights = c(1,40), hjust = -0.05)
 ```
 

@@ -53,10 +53,10 @@ exp4.umap <- rasterize(exp4.umap, layers = "point", dpi = 1200)
 sensitivity.compare.plot <- readRDS(file = here("figures", "figure-i", "exp04.rpe1.sensitivity.compare.RDS"))
 sensitivity.compare.plot.arms <- readRDS(file = here("figures", "figure-i", "exp04.rpe1.sensitivity.compare.arms.RDS"))
 
-tpr.wc.bars <- readRDS(here("figures", "figure-i", "exp04.rpe1.tpr.wc.RDS"))
-tpr.arm.bars <- readRDS(here("figures", "figure-i", "exp04.rpe1.tpr.arm.RDS")) + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.margin = unit(c(5.5, 5.5, 5.5, 0), "pt"))
-exp4.3comp.wc.sens <- readRDS(here("figures", "figure-i", "exp04.rpe1.tpr.wc.3comp.RDS"))
-exp4.3comp.arm.sens <- readRDS(here("figures", "figure-i", "exp04.rpe1.tpr.arm.3comp.RDS"))
+#tpr.wc.bars <- readRDS(here("figures", "figure-i", "exp04.rpe1.tpr.wc.RDS"))
+#tpr.arm.bars <- readRDS(here("figures", "figure-i", "exp04.rpe1.tpr.arm.RDS")) + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.margin = unit(c(5.5, 5.5, 5.5, 0), "pt"))
+#exp4.3comp.wc.sens <- readRDS(here("figures", "figure-i", "exp04.rpe1.tpr.wc.3comp.RDS"))
+#exp4.3comp.arm.sens <- readRDS(here("figures", "figure-i", "exp04.rpe1.tpr.arm.3comp.RDS"))
 
 barcode.plot.1 <- readRDS(file = here("figures", "figure-j", "exp04.bc.counts.rpe1.RDS"))
 barcode.plot.2 <- readRDS(file = here("figures", "figure-j", "exp04.bc.counts.hcec.RDS"))
@@ -72,15 +72,15 @@ p1 <- cowplot::plot_grid(plotlist = list(ychr.plot, exp4.umap), ncol = 2, labels
 
 p1.5 <- cowplot::plot_grid(plotlist = list(sensitivity.compare.plot, sensitivity.compare.plot.arms, plot.placeholder), ncol = 3, labels = c("C."), label_size = 12, scale = 0.95)
 
-p2 <- cowplot::plot_grid(plotlist = list(tpr.wc.bars, tpr.arm.bars), ncol = 2, labels = c("D.", ""), rel_widths = c(0.8, 1), axis = "b", align = "h", label_size = 12, scale = 0.95)
-
-p2.5 <- cowplot::plot_grid(plotlist = list(exp4.3comp.wc.sens, exp4.3comp.arm.sens), ncol = 2, labels = c("", ""), rel_widths = c(0.8, 1), axis = "b", align = "h", label_size = 12, scale = 0.95)
-
 p3 <- cowplot::plot_grid(plotlist = list(barcode.plot.1, barcode.plot.2, barcode.plot.3), ncol = 3, scale = 0.95)
 
-p4 <- cowplot::plot_grid(plotlist = list(p1, p1.5, p2, p2.5, p3), nrow = 5, rel_heights = c(1,0.8,1.8,1,1), label_size = 12, labels = c("", "", "","", "E."))
+p4 <- cowplot::plot_grid(plotlist = list(p1, p1.5, p3, plot.placeholder), nrow = 4, rel_heights = c(1,0.8,0.8,1), label_size = 12, labels = c("", "", "D.", ""))
 
 p5 <- cowplot::plot_grid(plotlist = list(plot.placeholder, p4), labels = "Supplimental Figure 4", ncol = 1, rel_heights = c(1,40), hjust = -0.05, label_size = 12)
+# p2 <- cowplot::plot_grid(plotlist = list(plot.placeholder, plot.placeholder), ncol = 2, labels = c("", ""), rel_widths = c(0.8, 1), axis = "b", align = "h", label_size = 12, scale = 0.95)
+# 
+# p2.5 <- cowplot::plot_grid(plotlist = list(plot.placeholder, plot.placeholder), ncol = 2, labels = c("", ""), rel_widths = c(0.8, 1), axis = "b", align = "h", label_size = 12, scale = 0.95)
+# 
 ```
 
 ```{r}
