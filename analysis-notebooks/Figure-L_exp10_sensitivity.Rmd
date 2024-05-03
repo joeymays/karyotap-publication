@@ -975,6 +975,108 @@ exp10.gmm.metrics.table$gain <- sensitivity.gain
 write.csv(x = exp10.gmm.metrics.table, file = here("figures", "figure-l", "exp10.theoretical.sensitivity.csv"), quote = F, row.names = F)
 ```
 
+# GMM Heatmap Comparison
+
+```{r}
+exp1 <- readRDS(file = here("datasets", "exp01.tapestriexperiment.RDS"))
+exp4 <- readRDS(file = here("datasets", "exp04.tapestriexperiment.RDS"))
+```
+
+```{r}
+exp1.rpe1 <- colData(exp1)$cell.barcode[colData(exp1)$cluster == "RPE1"]
+exp4.rpe1 <- colData(exp4)$cell.barcode[colData(exp4)$cluster == "RPE1"]
+exp10.rpe1 <- colData(exp10)$cell.barcode[colData(exp10)$cluster == "RPE1"]
+```
+
+```{r}
+rpe1.mat <- list_cbind(list(assay(altExp(exp1[,exp1.rpe1], "smoothedCopyNumberByArm"), "gmmCopyNumber"), 
+           assay(altExp(exp4[,exp4.rpe1], "smoothedCopyNumberByArm"), "gmmCopyNumber"),
+           assay(altExp(exp10[,exp10.rpe1], "smoothedCopyNumberByArm"), "gmmCopyNumber")))
+rownames(rpe1.mat) <- str_split_i(rownames(rpe1.mat), "chr", 2)
+```
+
+```{r}
+gmm.anno.scale <- c("1" = "#2c7bb6", "2" = "#ffffff", "3" = "#fdae61", "4" = "#d7191c", "5" = "#d7191c", "6" = "#d7191c")
+```
+
+```{r}
+experiment.vector.rpe1 <- factor(c(rep("RPE1 V1", length(exp1.rpe1)), rep("RPE1 V2", length(exp4.rpe1)), rep("RPE1 V3", length(exp10.rpe1))), levels = c("RPE1 V1", "RPE1 V2", "RPE1 V3"))
+```
+
+```{r}
+rpe1.hm <- Heatmap(t(rpe1.mat), cluster_columns = F, col = gmm.anno.scale, cluster_rows = T, show_row_dend = F, show_column_dend = F, show_row_names = F, column_names_side = "top", name = "Copy Number\nCall", cluster_row_slices = F,
+        column_names_centered = T, column_names_rot = 45, split = experiment.vector.rpe1, border = T, use_raster = F,
+        heatmap_legend_param = list(title_position = "topcenter", border = "black", labels = c("4+", "3", "2", "1"), at = 4:1))
+```
+
+```{r}
+exp1.lovo <- colData(exp1)$cell.barcode[colData(exp1)$cluster == "LoVo"]
+exp10.lovo <- colData(exp10)$cell.barcode[colData(exp10)$cluster == "LoVo"]
+```
+
+```{r}
+lovo.mat <- list_cbind(list(assay(altExp(exp1[,exp1.lovo], "smoothedCopyNumberByArm"), "gmmCopyNumber"), 
+           assay(altExp(exp10[,exp10.lovo], "smoothedCopyNumberByArm"), "gmmCopyNumber")))
+rownames(lovo.mat) <- str_split_i(rownames(lovo.mat), "chr", 2)
+```
+
+```{r}
+experiment.vector.lovo <- factor(c(rep("LoVo V1", length(exp1.lovo)), rep("LoVo V3", length(exp10.lovo))), levels = c("LoVo V1", "LoVo V3"))
+```
+
+```{r}
+lovo.hm <- Heatmap(t(lovo.mat), cluster_columns = F, col = gmm.anno.scale, cluster_rows = T, show_row_dend = F, show_column_dend = F, show_row_names = F, column_names_side = "top", name = "Copy Number\nCall", cluster_row_slices = F,
+        column_names_centered = T, column_names_rot = 45, split = experiment.vector.lovo, border = T, 
+        heatmap_legend_param = list(title_position = "topcenter", border = "black", labels = c("4+", "3", "2", "1"), at = 4:1))
+```
+
+```{r}
+exp1.ls <- colData(exp1)$cell.barcode[colData(exp1)$cluster == "LS513"]
+exp10.ls <- colData(exp10)$cell.barcode[colData(exp10)$cluster == "LS513"]
+```
+
+```{r}
+ls.mat <- list_cbind(list(assay(altExp(exp1[,exp1.ls], "smoothedCopyNumberByArm"), "gmmCopyNumber"), 
+           assay(altExp(exp10[,exp10.ls], "smoothedCopyNumberByArm"), "gmmCopyNumber")))
+rownames(ls.mat) <- str_split_i(rownames(ls.mat), "chr", 2)
+```
+
+```{r}
+experiment.vector.ls <- factor(c(rep("LS513 V1", length(exp1.ls)), rep("LS513 V3", length(exp10.ls))), levels = c("LS513 V1", "LS513 V3"))
+```
+
+```{r}
+ls.hm <- Heatmap(t(ls.mat), cluster_columns = F, col = gmm.anno.scale, cluster_rows = T, show_row_dend = F, show_column_dend = F, show_row_names = F, column_names_side = "top", name = "Copy Number\nCall", cluster_row_slices = F,
+        column_names_centered = T, column_names_rot = 45, split = experiment.vector.ls, border = T, 
+        heatmap_legend_param = list(title_position = "topcenter", border = "black", labels = c("4+", "3", "2", "1"), at = 4:1))
+```
+
+```{r}
+saveRDS(rpe1.hm, here("figures", "figure-l", "rpe1.gmm.heatmap.comparison.RDS"))
+saveRDS(lovo.hm, here("figures", "figure-l", "lovo.gmm.heatmap.comparison.RDS"))
+saveRDS(ls.hm, here("figures", "figure-l", "ls.gmm.heatmap.comparison.RDS"))
+```
+
+# Gains Losses Tables
+
+```{r}
+exp1.cn.results <- getTidyData(exp1, alt.exp = "smoothedCopyNumberByArm", assay = "gmmCopyNumber") %>% mutate(gmmCopyNumber = fct_collapse(as.factor(gmmCopyNumber), "1" = "1", "2" = "2", other_level = "3+")) %>% group_by(feature.id, cluster) %>% count(gmmCopyNumber, .drop = F) %>% mutate(pct = round(100*n/sum(n),1)) %>% select(!c(n)) %>%  pivot_wider(names_from = feature.id, values_from = pct) %>% print()
+```
+
+```{r}
+exp4.cn.results <- getTidyData(exp4, alt.exp = "smoothedCopyNumberByArm", assay = "gmmCopyNumber") %>% mutate(gmmCopyNumber = fct_collapse(as.factor(gmmCopyNumber), "1" = "1", "2" = "2", other_level = "3+")) %>% group_by(feature.id, cluster) %>% count(gmmCopyNumber, .drop = F) %>% mutate(pct = round(100*n/sum(n),1)) %>% select(!c(n)) %>%  pivot_wider(names_from = feature.id, values_from = pct) %>% print()
+```
+
+```{r}
+exp10.cn.results <- getTidyData(exp10, alt.exp = "smoothedCopyNumberByArm", assay = "gmmCopyNumber") %>% mutate(gmmCopyNumber = fct_collapse(as.factor(gmmCopyNumber), "1" = "1", "2" = "2", other_level = "3+")) %>% group_by(feature.id, cluster) %>% count(gmmCopyNumber, .drop = F) %>% mutate(pct = round(100*n/sum(n),1)) %>% select(!c(n)) %>%  pivot_wider(names_from = feature.id, values_from = pct) %>% print()
+```
+
+```{r}
+write.csv(exp1.cn.results, file = here("figures", "figure-l", "exp1.cn.results.csv"), quote = F, row.names = F)
+write.csv(exp4.cn.results, file = here("figures", "figure-l", "exp4.cn.results.csv"), quote = F, row.names = F)
+write.csv(exp10.cn.results, file = here("figures", "figure-l", "exp10.cn.results.csv"), quote = F, row.names = F)
+```
+
 # session_info
 
 ```{r}

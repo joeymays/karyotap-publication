@@ -34,6 +34,7 @@ library(tidyverse)
 library(here)
 library(ggplotify)
 library(cowplot)
+library(ComplexHeatmap)
 ```
 
 ```{r}
@@ -51,6 +52,10 @@ rpe1.wc.sensitivity.change <- readRDS(here("figures", "figure-l", "exp10.rpe1.se
 
 rpe1.arm.sensitivity.mad <- readRDS(here("figures", "figure-l", "exp10.rpe1.sensitivity.arm.mad.RDS"))
 rpe1.arm.sensitivity.change <- readRDS(here("figures", "figure-l", "exp10.rpe1.sensitivity.arm.change.RDS"))
+
+rpe1.hm <- readRDS(here("figures", "figure-l", "rpe1.gmm.heatmap.comparison.RDS"))
+lovo.hm <- readRDS(here("figures", "figure-l", "lovo.gmm.heatmap.comparison.RDS"))
+ls.hm <- readRDS(here("figures", "figure-l", "ls.gmm.heatmap.comparison.RDS"))
 ```
 
 ```{r}
@@ -60,8 +65,10 @@ plot.placeholder <- ggplot() + geom_blank() + theme(panel.background = element_b
 ```{r}
 p1 <- plot_grid(plotlist = list(rpe1.wc.sensitivity.mad, rpe1.wc.sensitivity.change), nrow = 2, rel_heights = c(1,0.75), labels = c("A.", "B."), align = "v", axis = "lr", scale = 0.95, label_size = 12) 
 p2 <- plot_grid(plotlist = list(p1, plot.placeholder), nrow = 1, rel_widths = c(1,0.7), labels = c("", ""), scale = c(1, 0.95), label_size = 12) 
-p4 <- plot_grid(plotlist = list(plot.placeholder, plot.placeholder), labels = c(), ncol = 2, scale = 0.95, label_size = 12)
-p5 <- plot_grid(plotlist = list(p2, rpe1.arm.sensitivity.mad, rpe1.arm.sensitivity.change, p4, plot.placeholder), ncol = 1, rel_heights = c(1.5, 0.75, 0.75, 1.5, 1.5), labels = c("", "C.", "D.", ""), scale = c(1, 0.95, 0.95, 1, 1), label_size = 12)
+
+p4 <- plot_grid(plotlist = list(as.ggplot(rpe1.hm), as.ggplot(lovo.hm), as.ggplot(ls.hm)), labels = c("F.", "G.", "H."), nrow = 3, scale = 0.95, label_size = 12)
+
+p5 <- plot_grid(plotlist = list(p2, rpe1.arm.sensitivity.mad, rpe1.arm.sensitivity.change, p4), ncol = 1, rel_heights = c(1.5, 0.75, 0.75, 3), labels = c("", "C.", "D."), scale = c(1, 0.95, 0.95, 1), label_size = 12)
 
 p5
 ```
@@ -70,6 +77,7 @@ p5
 ggsave(filename = here("figures", "Figure-07.pdf"), 
        device = "pdf", width = 8.25, height = 10.75)
 ```
+
 
 # session_info
 

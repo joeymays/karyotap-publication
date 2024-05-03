@@ -33,6 +33,7 @@ editor_options:
 library(tidyverse)
 library(here)
 library(cowplot)
+library(ggplotify)
 ```
 
 ```{r}
@@ -46,6 +47,8 @@ fig.scalar = 1.375 #figure size scalar
 
 ```{r}
 fig.full.wide <- readRDS(file = here("figures", "figure-k", "exp05.kc.wide.RDS")) 
+exp05.chr6.relativeAF.hm <- readRDS(file = here("figures", "figure-k", "exp05.chr6.relativeAF.hm.RDS"))
+exp05.chr6.cnnloh <- readRDS(file = here("figures", "figure-k", "exp05.chr6.cnnloh.RDS"))
 ```
 
 ```{r}
@@ -53,8 +56,12 @@ plot.placeholder <- ggplot() + geom_blank() + theme(panel.background = element_b
 ```
 
 ```{r}
-p2 <- plot_grid(plotlist = list(fig.full.wide, plot.placeholder), ncol = 1, rel_heights = c(0.80,1), scale = 0.95)
-cowplot::plot_grid(plotlist = list(plot.placeholder, p2), label_size = 12, ncol = 1, rel_heights = c(1,40), hjust = -0.05)
+p1 <- plot_grid(plotlist = list(fig.full.wide), ncol = 1, rel_heights = c(1), scale = 0.95, label_size = 12, labels = c("A."))
+p2 <- plot_grid(plotlist = list(as.ggplot(exp05.chr6.relativeAF.hm), plot.placeholder), nrow = 1, rel_widths = c(2,1), scale = 0.95, label_size = 12, labels = c("B."))
+p3 <- plot_grid(plotlist = list(as.ggplot(exp05.chr6.cnnloh), plot.placeholder), nrow = 1, rel_widths = c(2,1), scale = 0.95, label_size = 12, labels = c("C."))
+p4 <- plot_grid(plotlist = list(p1, p2, p3), ncol = 1, rel_heights = c(1, 1, 0.6))
+
+p4
 ```
 
 ```{r}

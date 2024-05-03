@@ -35,6 +35,7 @@ library(tidyverse)
 library(ggplot2)
 library(here)
 library(cowplot)
+library(ComplexHeatmap)
 ```
 
 ```{r}
@@ -294,9 +295,149 @@ fisher.result.table.combined <- full_join(fisher.result.table, fisher.result.raw
 ```
 
 ```{r}
-write.csv(fisher.result.table.combined, file = here("figures", "figure-k", "exp05.fisher.results.csv"), quote = F, row.names = F, col.names = T)
+write.csv(fisher.result.table.combined, file = here("figures", "figure-k", "exp05.fisher.results.csv"), quote = F, row.names = F)
 ```
 
+## LOH
+
+get g6_2 copy number data for chr 6, add AF frequencies and probe metadata
+
+```{r}
+exp5.chr6 <- getTidyData(exp5.subset, alt.exp = "smoothedCopyNumberByChr", assay = "gmmCopyNumber") %>% filter(sample.call %in% c("g6_2"), feature.id == 6) %>% select(feature.id, cell.barcode, gmmCopyNumber, sample.call)
+exp5.af <- getTidyData(exp5.subset, alt.exp = "alleleFrequency") %>% select(feature.id, cell.barcode, alleleFrequency, amplicon.id, chr)
+exp5.probe.data <- rowData(exp5.subset) %>% as_tibble() %>% select(probe.id, arm)
+exp5.af <- exp5.af %>% left_join(exp5.probe.data, by = c("amplicon.id" = "probe.id"))
+```
+
+Calling heterozygous variants as having an AF between 20 and 80%. 
+
+```{r}
+exp5.joint <- inner_join(exp5.af, exp5.chr6, by = c("chr" = "feature.id", "cell.barcode"))
+exp5.joint %>% dplyr::select(cell.barcode, gmmCopyNumber) %>% distinct() %>% pull(gmmCopyNumber) %>% as.factor() %>% fct_count()
+#exp5.joint <- exp5.joint %>% filter(gmmCopyNumber %in% 1:2, )
+exp5.joint$gmmCopyNumber <- as.factor(exp5.joint$gmmCopyNumber)
+het.variants <- exp5.joint %>% filter(gmmCopyNumber == 2) %>% group_by(feature.id) %>% summarize(mean.af = mean(alleleFrequency), .groups = "drop") %>% mutate(het = ifelse(mean.af > 20 & mean.af < 80, T, F)) %>% filter(het == TRUE) %>% pull(feature.id)
+```
+
+Add p and q CN calls
+
+```{r}
+exp5.joint <- getTidyData(exp5.subset, alt.exp = "smoothedCopyNumberByArm", assay = "gmmCopyNumber") %>% 
+    filter(sample.call == "g6_2", feature.id %in% c("chr6p", "chr6q")) %>%
+    select(feature.id, cell.barcode, gmmCopyNumber) %>% pivot_wider(id_cols = cell.barcode, names_from = feature.id, values_from = gmmCopyNumber, names_prefix = "gmm.") %>% 
+    right_join(exp5.joint, by = "cell.barcode")
+
+p.variants <- exp5.joint %>% filter(arm == "chr6p") %>% pull(feature.id) %>% unique(.)
+q.variants <- exp5.joint %>% filter(arm == "chr6q") %>% pull(feature.id) %>% unique(.)
+```
+
+```{r}
+exp5.joint %>% filter(feature.id %in% het.variants, gmmCopyNumber %in% 1:2) %>% mutate(rAF = abs(alleleFrequency - 50)) %>% 
+    ggplot(aes(x = feature.id, y = rAF, color = gmmCopyNumber)) +
+    geom_point(position = position_jitterdodge(), size = 0.5) +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "top") +
+    labs(title = "Chr6 g6-2") + 
+    labs(color = "Copy Number Call", x = "Variant", y = "abs(0.5 - AF)")
+```
+
+```{r}
+#ggsave(filename = here("figures", "figure-k","chr6.BAF.pdf"), 
+#       device = "pdf", height = 6, width = 11.25)
+```
+
+Plot relative allele frequency
+
+```{r}
+exp5.chr6.het.g6.nohaplo <- exp5.joint %>% filter(feature.id %in% het.variants, gmmCopyNumber %in% 1:2) %>% select(feature.id, cell.barcode, alleleFrequency) %>% 
+    mutate(rAF = abs(alleleFrequency - 50)) %>% select(!c(alleleFrequency)) %>% 
+    pivot_wider(names_from = feature.id, values_from = rAF) %>% column_to_rownames("cell.barcode")
+
+#simple annotation for heatmap showing gmm
+ha <- rowAnnotation(wcCN = exp5.joint %>% filter(gmmCopyNumber %in% 1:2) %>% select(cell.barcode, gmmCopyNumber) %>% distinct() %>% pull(gmmCopyNumber),
+                    pCN = exp5.joint %>% filter(gmmCopyNumber %in% 1:2) %>% select(cell.barcode, gmm.chr6p) %>% distinct() %>% pull(gmm.chr6p),
+                    qCN = exp5.joint %>% filter(gmmCopyNumber %in% 1:2) %>% select(cell.barcode, gmm.chr6q) %>% distinct() %>% pull(gmm.chr6q),
+                    col = list(wcCN = c("1" = "#47C858", "2" = "#7b3294"), 
+                               pCN = c("1" = "#FF7C1F", "2" = "#005AB5", "3" = "gray", "4" = "gray"),
+                               qCN = c("1" = "#4FCFC4", "2" = "#D41159", "3" = "gray", "4" = "gray")), 
+                    annotation_name_gp = gpar(fontsize = 8), 
+                    annotation_legend_param = list(title_gp = gpar(fontsize = 8)))
+    
+arm.split <- exp5.joint %>% filter(feature.id %in% het.variants, gmmCopyNumber %in% 1:2) %>% select(feature.id, arm) %>% distinct() %>% pull(arm)
+
+chr6.nohaplo.hm <- Heatmap(as.matrix(exp5.chr6.het.g6.nohaplo), show_row_names = F, name = "AF", cluster_columns = F, show_column_names = T, left_annotation = ha, 
+        col = circlize::colorRamp2(c(50, 0), c("blue", "white")), row_km = 4, border = T, 
+        show_row_dend = F, column_split = arm.split, column_names_gp = gpar(fontsize = 8),
+        column_title_gp = gpar(fontsize = 8), heatmap_legend_param = list(title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 8), at = c(0, 25, 50), title = "Relative\nAF"))
+chr6.nohaplo.hm
+```
+
+```{r}
+saveRDS(chr6.nohaplo.hm, file = here("figures", "figure-k", "exp05.chr6.relativeAF.hm.RDS"))
+```
+
+
+Whole chromosome events (arm result matches). Whole Chromosome Mean Allele Freq (mAF).
+
+```{r}
+non.arm.events <- exp5.joint %>% filter((gmm.chr6p == 2 & gmm.chr6q == 2) | gmm.chr6p == 1 & gmm.chr6q == 1) %>% pull(cell.barcode) %>% unique(.)
+
+het.baf.results.nonarm <- exp5.joint %>% filter(feature.id %in% het.variants, cell.barcode %in% non.arm.events, gmmCopyNumber %in% 1:2) %>% 
+    mutate(rAF = abs(alleleFrequency - 50)) %>% group_by(gmmCopyNumber, cell.barcode) %>% summarize(mAF = mean(rAF)) %>% mutate(het = mAF >= 40) %>% 
+    count(het) %>% mutate(pct = 100*n/sum(n)) %>% mutate(rpct = paste0(round(pct, 0), "%"))
+
+exp5.g6.meanAF.noarms <- exp5.joint %>% filter(feature.id %in% het.variants, cell.barcode %in% non.arm.events, gmmCopyNumber %in% 1:2) %>% 
+    mutate(rAF = abs(alleleFrequency - 50)) %>% group_by(gmmCopyNumber, cell.barcode) %>% summarize(mAF = mean(rAF), .groups = "drop") %>% 
+    ggplot(aes(x = gmmCopyNumber, y = mAF, color = gmmCopyNumber)) +
+    geom_point(position = position_jitterdodge(), size = 0.5) +
+    theme_bw_custom +
+    theme(legend.position = "none") +
+    labs(title = "g6_2", y = "Mean Relative AF") + 
+    labs(color = "Copy Number Call", x = "Copy Number Call") +
+    geom_hline(yintercept = 40, linetype = 'dashed') +
+    scale_color_manual(values = c("#2E93F2", "black")) +
+    annotate(geom = "text", label = het.baf.results.nonarm$rpct, x = c(1.2, 1.2, 2.2, 2.2), y = c(10, 45, 10, 45)) +
+    scale_y_continuous(breaks = seq(0,50,10), limits = c(0,50), expand = c(0,0,0,3))
+exp5.g6.meanAF.noarms
+```
+
+```{r}
+exp5.nc <- getTidyData(exp5.subset, alt.exp = "smoothedCopyNumberByChr", assay = "gmmCopyNumber") %>% filter(sample.call %in% c("gNC"), feature.id == 6) %>% select(feature.id, cell.barcode, gmmCopyNumber, sample.call)
+exp5.af <- getTidyData(exp5.subset, alt.exp = "alleleFrequency") %>% select(feature.id, cell.barcode, alleleFrequency, amplicon.id, chr)
+exp5.probe.data <- rowData(exp5.subset) %>% as_tibble() %>% select(probe.id, arm)
+exp5.af <- exp5.af %>% left_join(exp5.probe.data, by = c("amplicon.id" = "probe.id"))
+
+exp5.nc <- inner_join(exp5.af, exp5.nc, by = c("chr" = "feature.id", "cell.barcode"))
+exp5.nc$gmmCopyNumber <- as.factor(exp5.nc$gmmCopyNumber)
+```
+
+```{r}
+het.baf.results.nonarm.nc <- exp5.nc %>% filter(feature.id %in% het.variants, gmmCopyNumber %in% 1:2) %>% 
+    mutate(rAF = abs(alleleFrequency - 50)) %>% group_by(gmmCopyNumber, cell.barcode) %>% summarize(mAF = mean(rAF)) %>% mutate(het = mAF >= 40) %>% 
+    count(het) %>% mutate(pct = 100*n/sum(n)) %>% mutate(rpct = paste0(round(pct, 0), "%"))
+
+exp5.gNC.meanAF.noarms <- exp5.nc %>% filter(feature.id %in% het.variants, gmmCopyNumber %in% 1:2) %>% 
+    mutate(rAF = abs(alleleFrequency - 50)) %>% group_by(gmmCopyNumber, cell.barcode) %>% summarize(mAF = mean(rAF)) %>% 
+    ggplot(aes(x = gmmCopyNumber, y = mAF, color = gmmCopyNumber)) +
+    geom_point(position = position_jitterdodge(), size = 0.5) +
+    theme_bw_custom +
+    theme(legend.position = "none") +
+    labs(title = "gNC", y = "Mean Relative AF") + 
+    labs(color = "Copy Number Call", x = "Copy Number Call") +
+    geom_hline(yintercept = 40, linetype = 'dashed') +
+    scale_color_manual(values = c("#2E93F2", "black")) +
+    scale_y_continuous(breaks = seq(0,50,10), limits = c(0,50), expand = c(0,0,0,3))
+exp5.gNC.meanAF.noarms
+```
+
+```{r}
+exp5.g6.cnnloh <- cowplot::plot_grid(plotlist = list(exp5.gNC.meanAF.noarms, exp5.g6.meanAF.noarms))
+exp5.g6.cnnloh
+```
+
+```{r}
+saveRDS(exp5.g6.cnnloh, file = here("figures", "figure-k", "exp05.chr6.cnnloh.RDS"))
+```
 
 # session_info
 
