@@ -34,6 +34,7 @@ library(tidyverse)
 library(here)
 library(ggrastr)
 library(cowplot)
+library(ggplotify)
 ```
 
 ```{r}
@@ -53,14 +54,12 @@ exp4.umap <- rasterize(exp4.umap, layers = "point", dpi = 1200)
 sensitivity.compare.plot <- readRDS(file = here("figures", "figure-i", "exp04.rpe1.sensitivity.compare.RDS"))
 sensitivity.compare.plot.arms <- readRDS(file = here("figures", "figure-i", "exp04.rpe1.sensitivity.compare.arms.RDS"))
 
-#tpr.wc.bars <- readRDS(here("figures", "figure-i", "exp04.rpe1.tpr.wc.RDS"))
-#tpr.arm.bars <- readRDS(here("figures", "figure-i", "exp04.rpe1.tpr.arm.RDS")) + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.margin = unit(c(5.5, 5.5, 5.5, 0), "pt"))
-#exp4.3comp.wc.sens <- readRDS(here("figures", "figure-i", "exp04.rpe1.tpr.wc.3comp.RDS"))
-#exp4.3comp.arm.sens <- readRDS(here("figures", "figure-i", "exp04.rpe1.tpr.arm.3comp.RDS"))
-
 barcode.plot.1 <- readRDS(file = here("figures", "figure-j", "exp04.bc.counts.rpe1.RDS"))
 barcode.plot.2 <- readRDS(file = here("figures", "figure-j", "exp04.bc.counts.hcec.RDS"))
 barcode.plot.3 <- readRDS(file = here("figures", "figure-j", "exp04.bc.counts.hpne.RDS"))
+
+exp4.wc.gmm.heatmap <- readRDS(file = here("figures", "figure-i", "exp04.wc.gmm.heatmap.RDS"))
+exp4.arm.gmm.heatmap <- readRDS(file = here("figures", "figure-i", "exp04.arm.gmm.heatmap.RDS"))
 ```
 
 ```{r}
@@ -68,28 +67,35 @@ plot.placeholder <- ggplot() + geom_blank() + theme(panel.background = element_b
 ```
 
 ```{r}
+ht_opt("HEATMAP_LEGEND_PADDING" = unit(10, "mm"))
+x3.p1 <- as.ggplot(exp4.wc.gmm.heatmap)
+ht_opt(RESET = TRUE)
+```
+
+```{r}
+ht_opt("HEATMAP_LEGEND_PADDING" = unit(10, "mm"))
+x3.p2 <- as.ggplot(exp4.arm.gmm.heatmap)
+ht_opt(RESET = TRUE)
+```
+
+```{r}
 p1 <- cowplot::plot_grid(plotlist = list(ychr.plot, exp4.umap), ncol = 2, labels = c("A.", "B."), rel_widths = c(1, 0.7), label_size = 12, scale = 0.95, align = "h", axis = "b")
 
-p1.5 <- cowplot::plot_grid(plotlist = list(sensitivity.compare.plot, sensitivity.compare.plot.arms, plot.placeholder), ncol = 3, labels = c("C."), label_size = 12, scale = 0.95)
+p1.5 <- cowplot::plot_grid(plotlist = list(sensitivity.compare.plot, sensitivity.compare.plot.arms, plot.placeholder), ncol = 3, labels = c("E."), label_size = 12, scale = 0.95)
 
 p3 <- cowplot::plot_grid(plotlist = list(barcode.plot.1, barcode.plot.2, barcode.plot.3), ncol = 3, scale = 0.95)
 
-p4 <- cowplot::plot_grid(plotlist = list(p1, p1.5, p3, plot.placeholder), nrow = 4, rel_heights = c(1,0.8,0.8,1), label_size = 12, labels = c("", "", "D.", ""))
+p5 <- cowplot::plot_grid(plotlist = list(x3.p1, x3.p2), 
+                         label_size = 12, ncol = 1, labels = c("C.", "D."), rel_heights = c(1, 1), scale = 0.95)
 
-p5 <- cowplot::plot_grid(plotlist = list(plot.placeholder, p4), labels = "Supplimental Figure 4", ncol = 1, rel_heights = c(1,40), hjust = -0.05, label_size = 12)
-# p2 <- cowplot::plot_grid(plotlist = list(plot.placeholder, plot.placeholder), ncol = 2, labels = c("", ""), rel_widths = c(0.8, 1), axis = "b", align = "h", label_size = 12, scale = 0.95)
-# 
-# p2.5 <- cowplot::plot_grid(plotlist = list(plot.placeholder, plot.placeholder), ncol = 2, labels = c("", ""), rel_widths = c(0.8, 1), axis = "b", align = "h", label_size = 12, scale = 0.95)
-# 
+p4 <- cowplot::plot_grid(plotlist = list(p1, p5, p1.5, p3), nrow = 4, rel_heights = c(1,1.75,0.8,0.6), label_size = 12, labels = c("", "", "", "F."))
+
+p6 <- cowplot::plot_grid(plotlist = list(plot.placeholder, p4), labels = "Supplimental Figure 4", ncol = 1, rel_heights = c(1,40), hjust = -0.05, label_size = 12)
+
+p6
 ```
-
 ```{r}
-p5
-```
-
-
-```{r}
-ggsave(p5, filename = here("figures", "Figure-S04.pdf"), 
+ggsave(p6, filename = here("figures", "Figure-S04.pdf"), 
        device = "pdf", width = 8.25, height = 10.75)
 ```
 

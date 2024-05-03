@@ -1,0 +1,77 @@
+---
+title: "Figure S5"
+author: "Joey Mays"
+date: '2023-05-02'
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: 72
+---
+
+# Setup
+
+```{r message=FALSE}
+library(tidyverse)
+library(here)
+library(ggrastr)
+library(cowplot)
+library(ggplotify)
+```
+
+```{r}
+here::i_am("analysis-notebooks/Figure-S05.Rmd")
+```
+
+```{r}
+dir.create(here("figures"), showWarnings = F, recursive = T)
+fig.scalar = 1.375 #figure size scalar
+```
+
+```{r}
+v3.sensitivity.compare.plot <- readRDS(here("figures", "figure-l", "exp10.rpe1.sensitivity.compare.RDS"))
+v3.sensitivity.compare.plot.arms <- readRDS(here("figures", "figure-l", "exp10.rpe1.sensitivity.compare.arms.RDS"))
+```
+
+```{r}
+x5.1 <- cowplot::plot_grid(plotlist = list(v3.sensitivity.compare.plot, v3.sensitivity.compare.plot.arms), 
+                         label_size = 12, 
+                         ncol = 2, labels = c("A.", "B."), scale = 0.95)
+x5 <- cowplot::plot_grid(plotlist = list(x5.1, plot.placeholder), 
+                         ncol = 1, rel_heights = c(1, 3), scale = 0.95)
+
+p1 <- cowplot::plot_grid(plotlist = list(plot.placeholder, x5), labels = "Supplimental Figure 5", ncol = 1, rel_heights = c(1,40), hjust = -0.05, label_size = 12)
+```
+
+```{r}
+p1
+```
+
+```{r}
+ggsave(plot = p1, filename = here("figures", "Figure-S05.pdf"), 
+       device = "pdf", width = 8.25, height = 10.75)
+```
+
+# session_info
+
+```{r}
+sessioninfo::session_info()
+```

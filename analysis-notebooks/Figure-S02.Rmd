@@ -34,6 +34,7 @@ library(tidyverse)
 library(here)
 library(ggplotify)
 library(cowplot)
+library(ComplexHeatmap)
 ```
 
 ```{r}
@@ -47,8 +48,10 @@ fig.scalar = 1.375 #figure size scalar
 
 ```{r}
 chr.length.sensitivity <- readRDS(here("figures", "figure-c", "exp01.rpe1.accuracyVsLength.RDS"))
-#tpr.wc.bars <- readRDS(here("figures", "figure-c", "exp01.wc.theoretical.tpr.bars.RDS"))
-#tpr.arm.bars <- readRDS(file = here("figures", "figure-c", "exp01.arm.theoretical.tpr.bars.RDS"))
+exp1.kmeans.hm <- readRDS(file = here("figures", "figure-c", "exp1.kmeans.hm.RDS"))
+exp1.lovo.subclones.hm <- readRDS(file = here("figures", "figure-c", "exp1.lovo.subclones.hm.RDS"))
+exp1.wc.gmm.heatmap <- readRDS(file = here("figures", "figure-c", "exp1.wc.gmm.heatmap.RDS"))
+exp1.arm.gmm.heatmap <- readRDS(file = here("figures", "figure-c", "exp01.arm.gmm.heatmap.RDS"))
 ```
 
 ```{r}
@@ -56,13 +59,35 @@ plot.placeholder <- ggplot() + geom_blank() + theme(panel.background = element_b
 ```
 
 ```{r}
-p1 <- plot_grid(plotlist = list(chr.length.sensitivity, plot.placeholder), ncol = 2, labels = c("A.", ""), label_size = 12, scale = 0.95)
-p2 <- plot_grid(plotlist = list(plot.placeholder, plot.placeholder), rel_widths = c(1, 1), ncol = 2, labels = c("", ""), label_size = 12, scale = 0.95)
-p3 <- plot_grid(plotlist = list(p1, p2, plot.placeholder, plot.placeholder), ncol = 1, rel_heights = c(0.8,1.1,1.1,1), labels = c("", "", ""), label_size = 12, scale = c(1,1,0.95))
-p4 <- plot_grid(plotlist = list(plot.placeholder, p3), labels = "Supplemental Figure 2", label_size = 12, ncol = 1, rel_heights = c(1,40), hjust = -0.05)
+ht_opt("HEATMAP_LEGEND_PADDING" = unit(10, "mm"))
+x1.p1 <- as.ggplot(exp1.kmeans.hm)
+ht_opt(RESET = TRUE)
 ```
 
 ```{r}
+ht_opt("HEATMAP_LEGEND_PADDING" = unit(10, "mm"))
+x1.p2 <- as.ggplot(exp1.lovo.subclones.hm)
+ht_opt(RESET = TRUE)
+```
+
+```{r}
+ht_opt("HEATMAP_LEGEND_PADDING" = unit(10, "mm"))
+x2.p1 <- as.ggplot(exp1.wc.gmm.heatmap)
+ht_opt(RESET = TRUE)
+```
+
+```{r}
+ht_opt("HEATMAP_LEGEND_PADDING" = unit(10, "mm"))
+x2.p2 <- as.ggplot(exp1.arm.gmm.heatmap)
+ht_opt(RESET = TRUE)
+```
+
+```{r}
+p3 <- plot_grid(plotlist = list(chr.length.sensitivity, plot.placeholder), ncol = 2, label_size = 12, scale = 0.95)
+```
+
+```{r}
+p4 <- cowplot::plot_grid(plotlist = list(x1.p1, x1.p2, x2.p1, p3, x2.p2), ncol = 1, labels = c("A.", "B.", "C.", "D.", "E."), label_size = 12, scale = 0.95)
 p4
 ```
 
